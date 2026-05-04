@@ -1,0 +1,10 @@
+{
+  "name": "video-transcriber",
+  "version": "1.0.0",
+  "description": "Download videos from TikTok/Instagram/YouTube and transcribe audio locally",
+  "main": "server.js",
+  "dependencies": {
+    "express": "^4.19.2",
+    "@supabase/supabase-js": "^2.43.0"
+  }
+}

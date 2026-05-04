@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env                         # Docker reads your .env at runtime — NOT baked into the image
+    volumes:
+      - whisper-cache:/root/.cache/whisper   # reuse downloaded model across rebuilds
+    restart: unless-stopped
+
+volumes:
+  whisper-cache:
