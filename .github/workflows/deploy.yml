@@ -34,11 +34,21 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          BUILD_ID=$(gcloud builds submit \
-            --tag ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/app:latest \
-            --async --format="value(id)" --quiet)
+          IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/app:latest
+          BUILD_ID=$(gcloud builds submit --tag $IMAGE --async --format="value(id)" --quiet)
           echo "Build submitted: $BUILD_ID"
-          gcloud builds wait "$BUILD_ID"
+          echo "Waiting for build to complete..."
+          while true; do
+            STATUS=$(gcloud builds describe "$BUILD_ID" --format="value(status)" --quiet 2>/dev/null)
+            case "$STATUS" in
+              SUCCESS) echo "Build succeeded!"; break ;;
+              FAILURE|INTERNAL_ERROR|TIMEOUT|FAILED)
+                echo "Build $STATUS — check https://console.cloud.google.com/cloud-build/builds/$BUILD_ID?project=${{ vars.GCP_PROJECT_ID }}"
+                exit 1 ;;
+              WORKING|QUEUED) sleep 15 ;;
+              *) echo "Unknown status: $STATUS"; sleep 15 ;;
+            esac
+          done
 
       - id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
