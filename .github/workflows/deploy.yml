@@ -3,6 +3,13 @@ name: Deploy to Cloud Run
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'infra/**'
+      - '.gitignore'
+      - '.dockerignore'
+      - '.env.example'
+      - 'readm_next_phase.md'
 
 env:
   SERVICE_NAME: video-transcriber
@@ -27,8 +34,21 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          gcloud builds submit \
-            --tag ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/app:latest
+          IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/app:latest
+          BUILD_ID=$(gcloud builds submit --tag $IMAGE --async --format="value(id)" --quiet)
+          echo "Build submitted: $BUILD_ID"
+          echo "Waiting for build to complete..."
+          while true; do
+            STATUS=$(gcloud builds describe "$BUILD_ID" --format="value(status)" --quiet 2>/dev/null)
+            case "$STATUS" in
+              SUCCESS) echo "Build succeeded!"; break ;;
+              FAILURE|INTERNAL_ERROR|TIMEOUT|FAILED)
+                echo "Build $STATUS — check https://console.cloud.google.com/cloud-build/builds/$BUILD_ID?project=${{ vars.GCP_PROJECT_ID }}"
+                exit 1 ;;
+              WORKING|QUEUED) sleep 15 ;;
+              *) echo "Unknown status: $STATUS"; sleep 15 ;;
+            esac
+          done
 
       - id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
@@ -45,6 +65,21 @@ jobs:
             WHISPER_MODEL=${{ vars.WHISPER_MODEL || 'base' }}
             MAX_CONCURRENT_JOBS=1
             LOG_LEVEL=info
+          flags: |
+            --cpu=2
+            --memory=4Gi
+            --timeout=3600
+            --min-instances=0
+            --max-instances=1
+            --cpu-boost
+            --concurrency=default
+            --ingress=all
+            --service-account=video-transcriber@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+            --allow-unauthenticated
+            --startup-probe-tcp=8080
+            --startup-probe-initial-delay-seconds=60
+            --liveness-probe-http=/health
+            --liveness-probe-initial-delay-seconds=120
 
       - name: Show deploy URL
         run: echo "Deployed to ${{ steps.deploy.outputs.url }}"
