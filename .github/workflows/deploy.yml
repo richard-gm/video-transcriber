@@ -27,8 +27,11 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          gcloud builds submit \
-            --tag ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/app:latest
+          BUILD_ID=$(gcloud builds submit \
+            --tag ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/app:latest \
+            --async --format="value(id)" --quiet)
+          echo "Build submitted: $BUILD_ID"
+          gcloud builds wait "$BUILD_ID"
 
       - id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
