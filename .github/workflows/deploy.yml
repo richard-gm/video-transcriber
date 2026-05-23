@@ -27,8 +27,11 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          gcloud builds submit \
-            --tag ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/app:latest
+          BUILD_ID=$(gcloud builds submit \
+            --tag ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/app:latest \
+            --async --format="value(id)" --quiet)
+          echo "Build submitted: $BUILD_ID"
+          gcloud builds wait "$BUILD_ID"
 
       - id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
@@ -45,6 +48,21 @@ jobs:
             WHISPER_MODEL=${{ vars.WHISPER_MODEL || 'base' }}
             MAX_CONCURRENT_JOBS=1
             LOG_LEVEL=info
+          flags: |
+            --cpu=2
+            --memory=4Gi
+            --timeout=3600
+            --min-instances=0
+            --max-instances=1
+            --cpu-boost
+            --concurrency=default
+            --ingress=all
+            --service-account=video-transcriber@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+            --allow-unauthenticated
+            --startup-probe-tcp=8080
+            --startup-probe-initial-delay-seconds=60
+            --liveness-probe-http=/health
+            --liveness-probe-initial-delay-seconds=120
 
       - name: Show deploy URL
         run: echo "Deployed to ${{ steps.deploy.outputs.url }}"

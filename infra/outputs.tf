@@ -1,19 +1,15 @@
-output "cloud_run_url" {
-  description = "Cloud Run service URL — set this as your Telegram webhook"
-  value       = google_cloud_run_v2_service.app.uri
-}
-
 output "setup_commands" {
   description = "One-time setup commands"
+  sensitive   = true
   value = <<EOT
 
-# 1. Set the Telegram webhook (run this once after deploy):
+# Set the Telegram webhook (run this after first deploy):
+# Get the URL from the GitHub Actions "Show deploy URL" step, then:
 curl -X POST "https://api.telegram.org/bot${var.telegram_bot_token}/setWebhook" \
-  -d "url=${google_cloud_run_v2_service.app.uri}/telegram-webhook" \
+  -d "url=CLOUD_RUN_URL/telegram-webhook" \
   -d "secret_token=${var.telegram_secret_token}"
 
-# 2. To verify the webhook is set:
+# To verify:
 curl "https://api.telegram.org/bot${var.telegram_bot_token}/getWebhookInfo"
-
 EOT
 }
