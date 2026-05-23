@@ -2,7 +2,7 @@ services:
   app:
     build: .
     ports:
-      - "3000:3000"
+      - "3333:3333"
     env_file:
       - .env                         # Docker reads your .env at runtime — NOT baked into the image
     volumes:

@@ -4,7 +4,9 @@
   "description": "Download videos from TikTok/Instagram/YouTube and transcribe audio locally",
   "main": "server.js",
   "dependencies": {
+    "@supabase/supabase-js": "^2.43.0",
     "express": "^4.19.2",
-    "@supabase/supabase-js": "^2.43.0"
+    "express-rate-limit": "^8.5.2",
+    "pino": "^10.3.1"
   }
 }

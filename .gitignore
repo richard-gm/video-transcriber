@@ -1,1 +1,22 @@
-node_modules/\n.env\ndata/*.json
+node_modules/
+.env
+data/*.json
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+crash.log
+override.tf
+override.tf.json
+
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
