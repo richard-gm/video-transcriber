@@ -8,7 +8,6 @@ env:
   SERVICE_NAME: video-transcriber
   REGION: us-central1
   REPO: video-transcriber
-  IMAGE_TAG: ${{ vars.GCP_PROJECT_ID }}/video-transcriber/app:latest
 
 jobs:
   deploy:
@@ -29,14 +28,14 @@ jobs:
       - name: Build and push Docker image
         run: |
           gcloud builds submit \
-            --tag ${{ vars.GCP_PROJECT_ID }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/app:latest
+            --tag ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/app:latest
 
       - id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
-          image: ${{ vars.GCP_PROJECT_ID }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/app:latest
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/app:latest
           env_vars: |
             SUPABASE_URL=${{ secrets.SUPABASE_URL }}
             SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}

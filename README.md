@@ -62,7 +62,7 @@ npm install
 node server.js
 ```
 
-Open `http://localhost:3000`, paste a video URL, and click **Transcribe**.
+Open `http://localhost:3333`, paste a video URL, and click **Transcribe**.
 
 ---
 
@@ -110,8 +110,7 @@ The output includes the Cloud Run URL and a curl command to set the Telegram web
 
 | Secret | Value | Where to get it |
 |--------|-------|----------------|
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | `projects/.../locations/.../workloadIdentityPools/.../providers/...` | GCP → IAM → Workload Identity Federation → Create pool & provider for GitHub |
-| `GCP_SERVICE_ACCOUNT` | `video-transcriber@PROJECT.iam.gserviceaccount.com` | GCP → IAM → Service Accounts (created by Terraform) |
+| `GCP_SA_KEY` | `{"type":"service_account",...}` | GCP → IAM → Service Accounts → `github-actions-deployer` → Keys → Add Key → JSON |
 | `SUPABASE_URL` | `https://your-project.supabase.co` | Supabase → Settings → API |
 | `SUPABASE_ANON_KEY` | `eyJ...` | Supabase → Settings → API |
 | `TELEGRAM_BOT_TOKEN` | `123456:ABC-DEF1234...` | From @BotFather when you created the bot |
