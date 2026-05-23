@@ -2,9 +2,11 @@ services:
   app:
     build: .
     ports:
-      - "3000:3000"
+      - "3333:8080"                                       # host:container — container listens on 8080 (Dockerfile default)
+    environment:
+      - PORT=8080
     env_file:
-      - .env                         # Docker reads your .env at runtime — NOT baked into the image
+      - .env                                              # Docker reads your .env at runtime — NOT baked into the image
     volumes:
       - whisper-cache:/root/.cache/whisper   # reuse downloaded model across rebuilds
     restart: unless-stopped

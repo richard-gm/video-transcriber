@@ -1,0 +1,8 @@
+project_id           = "your-gcp-project-id"
+region               = "us-central1"
+supabase_url         = "https://your-project.supabase.co"
+supabase_anon_key    = "eyJ...your-anon-key..."
+supabase_table       = "videos"
+telegram_bot_token   = "123456:ABC-DEF1234..."
+telegram_secret_token = "generate-a-random-secret-string"
+whisper_model        = "base"
