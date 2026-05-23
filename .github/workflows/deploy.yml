@@ -3,6 +3,13 @@ name: Deploy to Cloud Run
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'infra/**'
+      - '.gitignore'
+      - '.dockerignore'
+      - '.env.example'
+      - 'readm_next_phase.md'
 
 env:
   SERVICE_NAME: video-transcriber
