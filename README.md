@@ -1,34 +1,56 @@
 # Video Transcriber
 
-Downloads videos from YouTube, TikTok, and Instagram, then transcribes the audio locally using OpenAI Whisper.
+Downloads videos from YouTube, TikTok, and Instagram, then transcribes the audio using OpenAI Whisper.
 
 ## Architecture
 
 ```
-┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
-│  Phone      │ ──▶ │  Telegram Bot    │ ──▶ │  Cloud Run  │
-│  (share     │     │  (public API)    │     │  (container)│
-│   URL)      │     └──────────────────┘     └──────┬──────┘
-└─────────────┘                                     │
-                                                     ├── yt-dlp
-                                                     ├── ffmpeg
-                                                     └── Whisper (persistent daemon)
-                                                         │
-                                                         ▼
-                                                   ┌─────────────┐
-                                                   │  Supabase   │
-                                                   │  (Postgres  │
-                                                   │  + Realtime)│
-                                                   └─────────────┘
+┌──────────────┐     ┌─────────────────────┐     ┌──────────────────┐
+│  Web UI      │ ──▶ │  Cloud Run Service  │ ──▶ │  Cloud Tasks     │
+│  (browser)   │     │  (API — fast path)  │     │  Queue (retries) │
+└──────────────┘     └─────────────────────┘     └────────┬─────────┘
+                                                           │
+┌──────────────┐     ┌─────────────────────┐               │
+│  Telegram    │ ──▶ │  /telegram-webhook  │               │
+│  Bot         │     │  (inserts + returns)│               │
+└──────────────┘     └─────────────────────┘               │
+                                                            ▼
+                                                  ┌──────────────────┐
+                                                  │  /api/task-handler│
+                                                  │  (creates job)   │
+                                                  └────────┬─────────┘
+                                                           │
+                                                  ┌────────▼─────────┐
+                                                  │  Cloud Run Job   │
+                                                  │  (worker — no    │
+                                                  │   timeout limit) │
+                                                  │                  │
+                                                  ├── yt-dlp         │
+                                                  ├── ffmpeg         │
+                                                  └── Whisper        │
+                                                           │
+                                                           ▼
+                                                  ┌──────────────────┐
+                                                  │  Supabase        │
+                                                  │  (Postgres —     │
+                                                  │   status/progress│
+                                                  │   polling)       │
+                                                  └──────────────────┘
 ```
 
-The app uses **Supabase Realtime** — new video URLs are picked up via WebSocket as soon as they're inserted. Rows left pending while the server was offline are processed at startup. Processing is capped to `MAX_CONCURRENT_JOBS` to avoid saturating the system.
+### Two modes
+
+**Local** (no GCP needed): the server calls the processing pipeline inline. Concurrency is limited to `MAX_CONCURRENT_JOBS`. Progress is written to Supabase and the frontend polls it.
+
+**Cloud** (Cloud Run + Cloud Tasks): the service inserts the row and enqueues a Cloud Task. The task handler creates a Cloud Run Job execution. The worker (same Docker image, `src/worker.js`) processes the video with **no timeout ceiling** — Cloud Run Jobs don't have the 1-hour limit that Cloud Run services do.
 
 ### Key design decisions
 
+- **Async by default** — API returns immediately with a job ID; the frontend polls `/api/status/:id` until completion.
+- **Progress tracking** — Real yt-dlp download metrics (speed, ETA, %) and estimated transcription progress visible in the UI.
+- **Single Docker image** — Both the service and the worker use the same image; the entry point is `src/server.js` (service) or `src/worker.js` (job).
 - **Telegram as primary interface** — Share URLs from your phone to the Telegram bot. No browser needed.
-- **Persistent Whisper worker** — The transcription model stays loaded in memory as a long-running Python child process, avoiding the ~2s reload penalty per request.
-- **Graceful shutdown** — On SIGTERM/SIGINT, the server stops accepting new work and waits for active jobs to finish before exiting.
+- **Graceful shutdown** — On SIGTERM/SIGINT, the server stops accepting new work and exits.
 - **Scale to zero** — Cloud Run spins down when idle; you pay only for the seconds you use.
 
 ## Quick start — local
@@ -48,7 +70,7 @@ In your Supabase dashboard → **SQL Editor**, run `schema.sql` to create the `v
 cp .env.example .env
 ```
 
-Fill in your Supabase URL and anon key (Settings → API).
+Fill in your Supabase URL and anon key (Settings → API). Leave the `TASK_QUEUE_PATH` / GCP variables blank — when they're unset, the app runs in local mode (inline processing).
 
 ### 3. Run
 
@@ -59,16 +81,12 @@ docker compose up --build
 Or locally:
 ```bash
 npm install
-node server.js
+node src/server.js
 ```
 
-Open `http://localhost:3333`, paste a video URL, and click **Transcribe**.
-
----
+Open `http://localhost:3333`, paste a video URL, and click **Transcribe**. The frontend polls for progress and shows you the result when done.
 
 ## Deploy to Cloud Run
-
-One-time GCP setup, then automatic deploys via GitHub Actions.
 
 ### 1. GCP project setup
 
@@ -76,7 +94,7 @@ One-time GCP setup, then automatic deploys via GitHub Actions.
 gcloud auth login
 gcloud projects create YOUR-PROJECT-ID --name="video-transcriber"
 gcloud config set project YOUR-PROJECT-ID
-gcloud services enable cloudrun.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com iamcredentials.googleapis.com
+gcloud services enable cloudrun.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com iamcredentials.googleapis.com cloudtasks.googleapis.com
 ```
 
 ### 2. Create Telegram bot
@@ -101,8 +119,9 @@ terraform apply
 
 This creates:
 - Artifact Registry repository (Docker image storage)
-- Cloud Run service (auto-scaling to zero)
-- Service account with minimal permissions
+- Cloud Tasks queue (retries, rate-limited dispatching)
+- Cloud Run Job (long-running worker, 10-hour timeout)
+- Service account with minimal permissions (artifact reader, task enqueuer, job runner)
 
 The output includes the Cloud Run URL and a curl command to set the Telegram webhook — run that command.
 
@@ -124,7 +143,7 @@ The output includes the Cloud Run URL and a curl command to set the Telegram web
 
 ### 5. Deploy
 
-Push to `main` — GitHub Actions builds the Docker image and deploys to Cloud Run automatically.
+Push to `main` — GitHub Actions builds the Docker image, deploys the Cloud Run service (API), and creates/updates the Cloud Run Job (worker).
 
 ```bash
 git add -A
@@ -132,15 +151,17 @@ git commit -m "initial deploy"
 git push origin main
 ```
 
+> **First deploy note**: The Cloud Run service URL is unknown on first deploy, so `HANDLER_URL` starts empty and Cloud Tasks are skipped. Push again after the first deploy to enable the full async queue flow.
+
 ### 6. Use it
 
-Send a YouTube/TikTok/Instagram link to your Telegram bot. You'll get "Got it! Processing…" immediately, then "✅ Done" with the URL when complete (typically 2-10 min depending on video length).
+Send a YouTube/TikTok/Instagram link to your Telegram bot. You'll get "Got it!" immediately. The service enqueues a Cloud Task → the task handler creates a Cloud Run Job → the worker processes the video (no 1-hour timeout). The frontend polls for status and shows a progress bar with ETA.
 
 ## Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `8080` | Web server port (Cloud Run injects this) |
+| `PORT` | `8080` | Web server port |
 | `SUPABASE_URL` | — | Supabase project URL |
 | `SUPABASE_ANON_KEY` | — | Supabase anon key |
 | `SUPABASE_TABLE` | `videos` | Table name for transcriptions |
@@ -150,13 +171,40 @@ Send a YouTube/TikTok/Instagram link to your Telegram bot. You'll get "Got it! P
 | `TELEGRAM_SECRET_TOKEN` | — | Webhook verification secret (optional locally) |
 | `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window |
 | `RATE_LIMIT_MAX` | `10` | Max requests per window per IP |
-| `MAX_CONCURRENT_JOBS` | `2` | Max simultaneous video processing jobs |
+| `MAX_CONCURRENT_JOBS` | `2` | Max simultaneous video processing (local mode only) |
+| `GCP_PROJECT_ID` | — | GCP project ID (required for Cloud mode) |
+| `TASK_QUEUE_PATH` | — | Cloud Tasks queue path (required for Cloud mode) |
+| `HANDLER_URL` | — | This service's public URL (required for Cloud mode) |
+| `CLOUD_RUN_REGION` | `us-central1` | GCP region |
+| `CLOUD_RUN_JOB_NAME` | `video-transcriber-worker` | Cloud Run Job name |
 
 ## API
 
 ### `GET /health`
 
-Returns server health and active job count.
+Returns server health.
+
+### `GET /api/status/:id`
+
+Returns the current status, transcript, and progress of a transcription job.
+
+```json
+{
+  "id": "uuid",
+  "url": "https://...",
+  "status": "processing",
+  "transcript": null,
+  "error": null,
+  "progress": {
+    "percentage": 42,
+    "stage": "transcribing",
+    "message": "Transcribing (42%, ETA 45m 12s)",
+    "eta": "45m 12s"
+  },
+  "created_at": "...",
+  "processed_at": null
+}
+```
 
 ### `GET /transcriptions`
 
@@ -170,44 +218,66 @@ Submit a new video for transcription. Rate-limited (10 req/min by default).
 { "url": "https://www.youtube.com/watch?v=..." }
 ```
 
+Returns the created job record with the job ID. The frontend then polls `/api/status/:id` for progress.
+
 ### `POST /telegram-webhook`
 
-Telegram bot webhook (only registered if `TELEGRAM_BOT_TOKEN` is set). Accepts a Telegram Update object, extracts the URL, and inserts it into Supabase for processing.
+Telegram bot webhook (only registered if `TELEGRAM_BOT_TOKEN` is set). Accepts a Telegram Update object, extracts the URL, and inserts it into Supabase.
 
 ## Project structure
 
 ```
-├── server.js                         Express server, worker, Telegram bot
+├── src/
+│   ├── server.js                Express app setup & boot
+│   ├── worker.js                Cloud Run Job entry point (thin wrapper)
+│   ├── pipeline.js              Shared processing pipeline (download → transcribe → save)
+│   ├── config.js                Centralized env var loading & validation
+│   ├── lib/
+│   │   ├── supabase.js          Supabase client singleton
+│   │   ├── telegram.js          Telegram sendMessage helper
+│   │   ├── queue.js             Cloud Tasks enqueue + Cloud Run Job creation
+│   │   ├── whisper.js           Python subprocess transcription
+│   │   ├── video.js             yt-dlp download + ffmpeg extract (with progress callbacks)
+│   │   └── job-queue.js         Concurrency limiter for local mode
+│   ├── routes/
+│   │   ├── health.js            GET /health
+│   │   ├── transcribe.js        POST /process
+│   │   ├── status.js            GET /api/status/:id
+│   │   ├── transcriptions.js    GET /transcriptions
+│   │   ├── task-handler.js      POST /api/task-handler (Cloud Tasks delivery)
+│   │   └── telegram.js          POST /telegram-webhook
+│   └── middleware/
+│       └── rate-limit.js        Rate limiter config
 ├── scripts/
-│   └── transcribe_worker.py          Persistent Whisper daemon
+│   └── transcribe_worker.py     Persistent Whisper daemon
 ├── public/
-│   └── index.html                    Frontend (optional — Telegram is primary)
+│   └── index.html               Frontend with progress bar
 ├── infra/
-│   ├── main.tf                       Cloud Run + Artifact Registry
-│   ├── variables.tf                  Terraform variables
-│   ├── outputs.tf                    Cloud Run URL output
-│   └── terraform.tfvars.example      Example variable values
+│   ├── main.tf                  Cloud Tasks queue + Cloud Run Job + IAM
+│   ├── variables.tf             Terraform variables
+│   ├── outputs.tf               Cloud Run URL output
+│   └── terraform.tfvars.example Example variable values
 ├── .github/workflows/
-│   └── deploy.yml                    CI/CD — build & deploy to Cloud Run
-├── schema.sql                        Supabase table definition
-├── Dockerfile                        Container build (CPU-only PyTorch)
-├── docker-compose.yml                Local runtime config
-├── .dockerignore                     Build context exclusions
-└── .env.example                      Environment template
+│   ├── deploy.yml               CI/CD — build image, deploy service + job
+│   └── terraform-infra.yml      Terraform apply on infra/ changes
+├── schema.sql                   Supabase table definition
+├── Dockerfile                   Container build (CPU-only PyTorch)
+└── docker-compose.yml           Local runtime config
 ```
 
 ## Tech stack
 
-- **Node.js** — Express server, Supabase client, pino logging
-- **Supabase** — Postgres database + Realtime WebSocket
+- **Node.js** — Express server, Supabase client, pino logging, GCP SDKs
+- **Supabase** — Postgres database (status, progress polling)
 - **Telegram Bot API** — User interface (share URLs, receive results)
 - **yt-dlp** — Video download
 - **ffmpeg** — Audio extraction
-- **OpenAI Whisper** — Local speech-to-text (persistent Python daemon)
-- **GCP Cloud Run** — Serverless container hosting (scale to zero)
+- **OpenAI Whisper** — Local speech-to-text (Python subprocess)
+- **GCP Cloud Run** — Serverless container hosting (service + job)
+- **GCP Cloud Tasks** — Reliable async queue with retries
 - **Terraform** — Infrastructure as code
 - **GitHub Actions** — CI/CD pipeline
 
 ## TODO
 
-- [ ] **Video categorization & downstream actions** — After transcription, auto-categorize videos by topic (e.g., via LLM or keyword rules) and trigger actions per category (e.g., append to Notion, post to Slack, save to specific folders). Plan and implement an extensible plugin pattern in server.js.
+- [ ] **Video categorization & downstream actions** — After transcription, auto-categorize videos by topic and trigger actions per category.

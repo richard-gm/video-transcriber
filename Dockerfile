@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/wh
 RUN pip install --no-cache-dir yt-dlp openai-whisper
 
 # Pre-download Whisper "base" model so first transcription isn't slow.
-RUN python -c "import whisper; whisper.load_model('base')"
+RUN python -c "import whisper; whisper.load_model('small')"
 
 # ── Node app ─────────────────────────────────────────────────────────────────
 WORKDIR /app
@@ -25,7 +25,7 @@ COPY package.json .
 RUN npm install --omit=dev
 
 # Then source code
-COPY server.js .
+COPY src/ src/
 COPY scripts/ scripts/
 COPY public/ public/
 
@@ -37,4 +37,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD node -e "require('http').get('http://localhost:8080/health', r => { process.exit(r.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
 
-CMD ["node", "server.js"]
+CMD ["node", "src/server.js"]

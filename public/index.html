@@ -139,6 +139,42 @@
     .status-badge.pending { background: #333; color: #aaa; }
     .status-badge.processing { background: #1e3a5f; color: #7dd3fc; }
     .status-badge.error { background: #3b1a1a; color: #f87171; }
+    .status-badge.cancelled { background: #3b3b1a; color: #fcd34d; }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #2a2a2a;
+      border-radius: 3px;
+      margin-top: 0.75rem;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: #7dd3fc;
+      border-radius: 3px;
+      transition: width 1s ease;
+    }
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: #888;
+      margin-top: 0.4rem;
+    }
+
+    .cancel-btn {
+      padding: 0.25rem 0.6rem;
+      background: transparent;
+      color: #f87171;
+      border: 1px solid #f87171;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      vertical-align: middle;
+    }
+    .cancel-btn:hover { background: #3b1a1a; }
   </style>
 </head>
 <body>
@@ -175,7 +211,7 @@
       if (!url) return;
 
       btn.disabled = true;
-      status.innerHTML = '<span class="spinner"></span> Downloading and transcribing… this can take a few minutes.';
+      status.innerHTML = '<span class="spinner"></span> Queuing transcription…';
       status.className = 'status';
 
       try {
@@ -192,10 +228,60 @@
           return;
         }
 
-        status.textContent = '✓ Done';
-        urlInput.value = '';
-        prependResult(data);
-        loadHistory();
+        const jobId = data.id;
+        status.setAttribute('data-job-id', jobId);
+        status.innerHTML = '<span class="spinner"></span> Job queued — waiting for result…';
+
+        let pollRetries = 0;
+
+        window._pollInterval = setInterval(async () => {
+          if (!status.getAttribute('data-job-id')) return;
+          const pollRes = await fetch('/api/status/' + jobId);
+          const job = await pollRes.json();
+          if (!pollRes.ok) {
+            pollRetries++;
+            if (pollRetries < 10) return;
+            status.textContent = '❌ ' + (job.error || 'Failed to check status');
+            status.className = 'status error';
+            clearInterval(window._pollInterval);
+            return;
+          }
+          pollRetries = 0;
+          if (job.status === 'done') {
+            status.innerHTML = '✓ Done';
+            urlInput.value = '';
+            prependResult(job);
+            loadHistory();
+            clearInterval(window._pollInterval);
+            return;
+          }
+          if (job.status === 'error') {
+            status.innerHTML = '❌ ' + (job.error || 'Processing failed');
+            status.className = 'status error';
+            clearInterval(window._pollInterval);
+            return;
+          }
+          if (job.status === 'cancelled') {
+            status.innerHTML = '✕ Cancelled';
+            status.className = 'status';
+            clearInterval(window._pollInterval);
+            return;
+          }
+          const p = job.progress || {};
+          const pct = p.percentage || 0;
+          const msg = p.message || job.status;
+          const eta = p.eta ? ' &middot; ETA ' + p.eta : '';
+          status.innerHTML = `
+            <span class="spinner"></span> ${escHtml(msg)}${eta}
+            <div class="progress-bar">
+              <div class="progress-bar-fill" style="width:${pct}%"></div>
+            </div>
+            <div class="progress-info">
+              <span>${pct}%</span>
+              <span>${escHtml(p.stage || 'processing')}</span>
+            </div>
+            <button class="cancel-btn" onclick="cancelJob()">Cancel</button>`;
+        }, 3000);
       } catch (err) {
         status.textContent = '❌ Network error: ' + err.message;
         status.className = 'status error';
@@ -240,6 +326,23 @@
         document.getElementById('history').innerHTML = records.map(renderCard).join('');
       } catch {}
     }
+
+    // Poll interval reference for cancel
+    window._pollInterval = null;
+
+    // Global cancel handler — reads job ID from the status element
+    window.cancelJob = function () {
+      const status = document.getElementById('status');
+      const jobId = status.getAttribute('data-job-id');
+      if (!jobId) return;
+      status.removeAttribute('data-job-id');
+      if (window._pollInterval) {
+        clearInterval(window._pollInterval);
+        window._pollInterval = null;
+      }
+      status.innerHTML = '<span class="spinner"></span> Cancelling…';
+      fetch('/api/cancel/' + jobId, { method: 'POST' }).catch(() => {});
+    };
 
     // Allow Enter key to submit
     document.getElementById('url').addEventListener('keydown', (e) => {

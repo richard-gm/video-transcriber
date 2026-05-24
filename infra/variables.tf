@@ -42,5 +42,17 @@ variable "telegram_secret_token" {
 variable "whisper_model" {
   description = "Whisper model size: tiny, base, small, medium, large"
   type        = string
-  default     = "base"
+  default     = "small"
+}
+
+variable "worker_cpu" {
+  description = "CPU for the Cloud Run Job worker"
+  type        = string
+  default     = "2"
+}
+
+variable "worker_memory" {
+  description = "Memory for the Cloud Run Job worker"
+  type        = string
+  default     = "4Gi"
 }

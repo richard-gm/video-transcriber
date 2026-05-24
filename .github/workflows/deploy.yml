@@ -13,6 +13,7 @@ on:
 
 env:
   SERVICE_NAME: video-transcriber
+  JOB_NAME: video-transcriber-worker
   REGION: us-central1
   REPO: video-transcriber
 
@@ -50,6 +51,16 @@ jobs:
             esac
           done
 
+      - name: Get existing service URL (for HANDLER_URL)
+        id: service-url
+        continue-on-error: true
+        run: |
+          URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region=${{ env.REGION }} \
+            --format="value(status.url)" \
+            --quiet 2>/dev/null || echo "")
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
       - id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
         with:
@@ -62,13 +73,16 @@ jobs:
             SUPABASE_TABLE=${{ vars.SUPABASE_TABLE || 'videos' }}
             TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
             TELEGRAM_SECRET_TOKEN=${{ secrets.TELEGRAM_SECRET_TOKEN }}
-            WHISPER_MODEL=${{ vars.WHISPER_MODEL || 'base' }}
-            MAX_CONCURRENT_JOBS=1
+            GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID }}
+            CLOUD_RUN_REGION=${{ env.REGION }}
+            TASK_QUEUE_PATH=projects/${{ vars.GCP_PROJECT_ID }}/locations/${{ env.REGION }}/queues/transcription-queue
+            HANDLER_URL=${{ steps.service-url.outputs.url }}
+            CLOUD_RUN_JOB_NAME=${{ env.JOB_NAME }}
             LOG_LEVEL=info
           flags: |
-            --cpu=2
-            --memory=4Gi
-            --timeout=3600
+            --cpu=1
+            --memory=512Mi
+            --timeout=300
             --min-instances=0
             --max-instances=1
             --cpu-boost
@@ -77,5 +91,34 @@ jobs:
             --service-account=video-transcriber@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
             --allow-unauthenticated
 
+      - name: Deploy Cloud Run Job (long-running worker)
+        run: |
+          IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/app:latest
+
+          gcloud run jobs deploy ${{ env.JOB_NAME }} \
+            --region=${{ env.REGION }} \
+            --image=$IMAGE \
+            --command=node \
+            --args=src/worker.js \
+            --cpu=2 \
+            --memory=4Gi \
+            --task-timeout=36000 \
+            --max-retries=0 \
+            --service-account=video-transcriber@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --set-env-vars="SUPABASE_URL=${{ secrets.SUPABASE_URL }}" \
+            --set-env-vars="SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" \
+            --set-env-vars="SUPABASE_TABLE=${{ vars.SUPABASE_TABLE || 'videos' }}" \
+            --set-env-vars="WHISPER_MODEL=${{ vars.WHISPER_MODEL || 'base' }}" \
+            --set-env-vars="TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" \
+            --set-env-vars="WHISPER_THREADS=2" \
+            --set-env-vars="LOG_LEVEL=info"
+
       - name: Show deploy URL
-        run: echo "Deployed to ${{ steps.deploy.outputs.url }}"
+        run: |
+          echo "Service deployed to ${{ steps.deploy.outputs.url }}"
+          echo ""
+          echo "On first deploy, HANDLER_URL starts empty — Cloud Tasks are skipped."
+          echo "After this deploy succeeds, push again to enable async queuing."
+          echo ""
+          echo "To verify the worker job:"
+          echo "  gcloud run jobs describe ${{ env.JOB_NAME }} --region=${{ env.REGION }}"

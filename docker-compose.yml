@@ -5,6 +5,7 @@ services:
       - "3333:8080"                                       # host:container — container listens on 8080 (Dockerfile default)
     environment:
       - PORT=8080
+      - WHISPER_THREADS=4                                 # limit PyTorch CPU threads to prevent 800%+ CPU
     env_file:
       - .env                                              # Docker reads your .env at runtime — NOT baked into the image
     volumes:
