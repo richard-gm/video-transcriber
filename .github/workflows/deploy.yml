@@ -76,10 +76,6 @@ jobs:
             --ingress=all
             --service-account=video-transcriber@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
             --allow-unauthenticated
-            --startup-probe-tcp=8080
-            --startup-probe-initial-delay-seconds=60
-            --liveness-probe-http=/health
-            --liveness-probe-initial-delay-seconds=120
 
       - name: Show deploy URL
         run: echo "Deployed to ${{ steps.deploy.outputs.url }}"
