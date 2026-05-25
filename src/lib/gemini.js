@@ -22,7 +22,7 @@ async function analyseTranscript(transcript) {
 
   try {
     const model = client.getGenerativeModel({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.0-flash-lite',
       generationConfig: { responseMimeType: 'application/json' },
     });
 
