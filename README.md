@@ -302,12 +302,4 @@ AI analysis is **optional** — if `GEMINI_API_KEY` is not set, transcription st
 
 ### Backfilling existing videos
 
-To run AI analysis on videos that were transcribed before this feature was added:
-
-```bash
-# 1. Make sure your .env has SUPABASE_URL, SUPABASE_ANON_KEY, and GEMINI_API_KEY
-# 2. Run the one-off backfill script
-node scripts/reanalyse.js
-```
-
-The script skips videos that already have a summary, so it's safe to re-run.
+The recommended approach is to ask your Claude agent (via NanoClaw) to run the analysis for you. The agent fetches transcripts directly from Supabase, analyses them using Claude, and writes the results back — no API key or script required on your end. Just ask: *"Run AI analysis on any videos missing a summary."*
