@@ -8,6 +8,7 @@
     "@google-cloud/tasks": "^5.5.0",
     "@google/generative-ai": "^0.21.0",
     "@supabase/supabase-js": "^2.43.0",
+    "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^8.5.2",
     "pino": "^10.3.1"
