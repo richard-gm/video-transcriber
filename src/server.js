@@ -14,6 +14,7 @@ const transcriptionsRoutes = require('./routes/transcriptions');
 const taskHandlerRoutes = require('./routes/task-handler');
 const telegramRoutes = require('./routes/telegram');
 const cancelRoutes = require('./routes/cancel');
+const deleteRoutes = require('./routes/delete');
 
 const app = express();
 app.use(express.json());
@@ -26,6 +27,7 @@ app.use(transcriptionsRoutes);
 app.use(taskHandlerRoutes);
 app.use(telegramRoutes);
 app.use(cancelRoutes);
+app.use(deleteRoutes);
 
 async function shutdown(signal) {
   logger.info({ signal }, 'shutting down');

@@ -92,11 +92,20 @@
       word-break: break-all;
       margin-bottom: 0.6rem;
     }
+    .toggle-btn {
+      background: none;
+      border: none;
+      color: #7dd3fc;
+      font-size: 0.7rem;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+      margin-left: 1rem;
+    }
+    .toggle-btn:hover { color: #99e6ff; }
 
     .result-text {
-      font-size: 0.9rem;
-      line-height: 1.6;
-      color: #ddd;
+      font-size: 0.85rem;
       white-space: pre-wrap;
     }
 
@@ -105,6 +114,55 @@
       color: #555;
       margin-top: 0.6rem;
     }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal-box {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 1.5rem;
+      max-width: 360px;
+      width: 90%;
+      text-align: center;
+    }
+    .modal-box p {
+      font-size: 0.9rem;
+      margin-bottom: 1.25rem;
+      color: #e8e8e8;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+    .modal-actions button {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      border: 1px solid #333;
+      background: #111;
+      color: #aaa;
+      transition: background 0.2s;
+    }
+    .modal-actions button:hover { background: #222; }
+    .modal-actions .modal-danger {
+      background: transparent;
+      color: #f87171;
+      border-color: #f87171;
+    }
+    .modal-actions .modal-danger:hover { background: #3b1a1a; }
 
     .section-title {
       font-size: 0.8rem;
@@ -175,6 +233,19 @@
       vertical-align: middle;
     }
     .cancel-btn:hover { background: #3b1a1a; }
+
+    .delete-btn {
+      background: none;
+      border: none;
+      color: #666;
+      font-size: 0.7rem;
+      cursor: pointer;
+      padding: 0;
+      margin-left: 1rem;
+      text-decoration: underline;
+      transition: color 0.2s;
+    }
+    .delete-btn:hover { color: #f87171; }
   </style>
 </head>
 <body>
@@ -198,6 +269,16 @@
     <div id="history-section" style="display:none">
       <p class="section-title">Previous transcriptions</p>
       <div id="history"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal">
+    <div class="modal-box">
+      <p id="modal-message"></p>
+      <div class="modal-actions">
+        <button id="modal-cancel">Cancel</button>
+        <button class="modal-danger" id="modal-confirm">Delete</button>
+      </div>
     </div>
   </div>
 
@@ -297,18 +378,34 @@
       container.insertAdjacentHTML('afterbegin', renderCard(entry));
     }
 
+    function escAttr(s) {
+      return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
     function renderCard(entry) {
       const date = new Date(entry.created_at).toLocaleString();
-      const transcript = entry.transcript ? `<div class="result-text">${escHtml(entry.transcript)}</div>` : '';
       const error = entry.error ? `<div class="error">${escHtml(entry.error)}</div>` : '';
       const statusLabel = entry.status !== 'done' ? `<div class="status-badge ${entry.status}">${entry.status}</div>` : '';
+      let transcriptHtml = '';
+      let toggleBtnHtml = '';
+      if (entry.transcript) {
+        const words = entry.transcript.split(/\s+/);
+        if (words.length > 100) {
+          const fullRaw = entry.transcript;
+          const shortRaw = words.slice(0, 100).join(' ') + '…';
+          transcriptHtml = `<div class="result-text" id="text-${escHtml(entry.id)}" data-full="${escAttr(fullRaw)}" data-short="${escAttr(shortRaw)}">${escHtml(shortRaw)}</div>`;
+          toggleBtnHtml = `<button class="toggle-btn" id="toggle-${escHtml(entry.id)}" onclick="toggleText('${escHtml(entry.id)}')">show more</button>`;
+        } else {
+          transcriptHtml = `<div class="result-text">${escHtml(entry.transcript)}</div>`;
+        }
+      }
       return `
-        <div class="result-card">
+        <div class="result-card" id="card-${escHtml(entry.id)}">
           <div class="result-url">${escHtml(entry.url)}</div>
           ${statusLabel}
-          ${transcript}
+          ${transcriptHtml}
           ${error}
-          <div class="result-date">${date}</div>
+          <div class="result-date">${date} ${toggleBtnHtml}<button class="delete-btn" onclick="deleteEntry('${escHtml(entry.id)}')">delete</button></div>
         </div>`;
     }
 
@@ -342,6 +439,57 @@
       }
       status.innerHTML = '<span class="spinner"></span> Cancelling…';
       fetch('/api/cancel/' + jobId, { method: 'POST' }).catch(() => {});
+    };
+
+    // Modal confirm — returns a Promise<boolean>
+    window.confirmModal = function (msg) {
+      return new Promise((resolve) => {
+        const overlay = document.getElementById('modal');
+        document.getElementById('modal-message').textContent = msg;
+        overlay.classList.add('active');
+        const cleanup = () => overlay.classList.remove('active');
+        document.getElementById('modal-cancel').onclick = () => { cleanup(); resolve(false); };
+        document.getElementById('modal-confirm').onclick = () => { cleanup(); resolve(true); };
+        overlay.onclick = (e) => { if (e.target === overlay) { cleanup(); resolve(false); } };
+      });
+    };
+
+    // Global delete handler — confirms, then removes the card
+    window.deleteEntry = async function (id) {
+      const ok = await window.confirmModal('Delete this transcription?');
+      if (!ok) return;
+      const res = await fetch('/api/delete/' + id, { method: 'DELETE' });
+      if (!res.ok) return alert('Failed to delete');
+      const card = document.getElementById('card-' + id);
+      if (card) {
+        card.style.transition = 'opacity 0.3s';
+        card.style.opacity = '0';
+        setTimeout(() => {
+          card.remove();
+          if (!document.querySelector('.result-card')) {
+            document.getElementById('history-section').style.display = 'none';
+          }
+        }, 300);
+      }
+    };
+
+    // Global toggle handler — expands/collapses long transcripts
+    window.toggleText = function (id) {
+      const el = document.getElementById('text-' + id);
+      const btn = document.getElementById('toggle-' + id);
+      if (!el || !btn) return;
+      const full = el.getAttribute('data-full');
+      const short = el.getAttribute('data-short');
+      if (el.__collapsed === undefined) el.__collapsed = true;
+      if (el.__collapsed) {
+        el.innerHTML = escHtml(full);
+        btn.textContent = 'show less';
+        el.__collapsed = false;
+      } else {
+        el.innerHTML = escHtml(short);
+        btn.textContent = 'show more';
+        el.__collapsed = true;
+      }
     };
 
     // Allow Enter key to submit
