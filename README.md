@@ -134,6 +134,7 @@ The output includes the Cloud Run URL and a curl command to set the Telegram web
 | `SUPABASE_ANON_KEY` | `eyJ...` | Supabase → Settings → API |
 | `TELEGRAM_BOT_TOKEN` | `123456:ABC-DEF1234...` | From @BotFather when you created the bot |
 | `TELEGRAM_SECRET_TOKEN` | Your random secret string | You generated this in step 2 |
+| `GEMINI_API_KEY` | `AIza...` | [aistudio.google.com](https://aistudio.google.com) → Get API key (free, optional) |
 
 | Variable | Value | Where to get it |
 |----------|-------|----------------|
@@ -177,6 +178,7 @@ Send a YouTube/TikTok/Instagram link to your Telegram bot. You'll get "Got it!" 
 | `HANDLER_URL` | — | This service's public URL (required for Cloud mode) |
 | `CLOUD_RUN_REGION` | `us-central1` | GCP region |
 | `CLOUD_RUN_JOB_NAME` | `video-transcriber-worker` | Cloud Run Job name |
+| `GEMINI_API_KEY` | — | Google AI Studio key for AI analysis (optional — get free key at [aistudio.google.com](https://aistudio.google.com)) |
 
 ## API
 
@@ -234,6 +236,7 @@ Telegram bot webhook (only registered if `TELEGRAM_BOT_TOKEN` is set). Accepts a
 │   ├── config.js                Centralized env var loading & validation
 │   ├── lib/
 │   │   ├── supabase.js          Supabase client singleton
+│   │   ├── gemini.js            Gemini 1.5 Flash AI analysis
 │   │   ├── telegram.js          Telegram sendMessage helper
 │   │   ├── queue.js             Cloud Tasks enqueue + Cloud Run Job creation
 │   │   ├── whisper.js           Python subprocess transcription
@@ -249,7 +252,8 @@ Telegram bot webhook (only registered if `TELEGRAM_BOT_TOKEN` is set). Accepts a
 │   └── middleware/
 │       └── rate-limit.js        Rate limiter config
 ├── scripts/
-│   └── transcribe_worker.py     Persistent Whisper daemon
+│   ├── transcribe_worker.py     Persistent Whisper daemon
+│   └── reanalyse.js             One-off backfill: run AI analysis on existing transcripts
 ├── public/
 │   └── index.html               Frontend with progress bar
 ├── infra/
@@ -278,6 +282,32 @@ Telegram bot webhook (only registered if `TELEGRAM_BOT_TOKEN` is set). Accepts a
 - **Terraform** — Infrastructure as code
 - **GitHub Actions** — CI/CD pipeline
 
-## TODO
+## AI Analysis
 
-- [ ] **Video categorization & downstream actions** — After transcription, auto-categorize videos by topic and trigger actions per category.
+After transcription, each video is automatically analysed by Gemini 1.5 Flash. The following fields are extracted and saved to the database:
+
+| Field | Description |
+|-------|-------------|
+| `summary` | 3–5 sentence overview |
+| `key_takeaways` | Bullet points of the main ideas |
+| `tips_and_tricks` | Actionable advice extracted from the content |
+| `category` | Auto-classified topic (education, marketing, technology, etc.) |
+| `tags` | 3–5 searchable keywords |
+| `chapters` | Titled sections with timestamps for long videos |
+| `quotes` | Most memorable/shareable quotes |
+| `action_items` | Step-by-step instructions (tutorials only) |
+| `tone` | Content style (educational, motivational, tutorial, etc.) |
+
+AI analysis is **optional** — if `GEMINI_API_KEY` is not set, transcription still works and AI fields are left null.
+
+### Backfilling existing videos
+
+To run AI analysis on videos that were transcribed before this feature was added:
+
+```bash
+# 1. Make sure your .env has SUPABASE_URL, SUPABASE_ANON_KEY, and GEMINI_API_KEY
+# 2. Run the one-off backfill script
+node scripts/reanalyse.js
+```
+
+The script skips videos that already have a summary, so it's safe to re-run.

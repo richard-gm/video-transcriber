@@ -1,186 +1,134 @@
-# Next Phase — LLM Categorization & Downstream Actions
+# Next Phase — Roadmap & Ideas
 
-## Goal
+## What's been built so far
 
-After transcription, automatically categorize each video (technology, cooking, news, etc.), generate tags and a summary, and optionally trigger different actions per category.
-
----
-
-## 1. LLM — Gemini 1.5 Flash (free tier)
-
-| Factor | Detail |
-|--------|--------|
-| Model | Gemini 1.5 Flash (or 2.0 Flash when stable) |
-| Free tier | 1,500 requests/day, 1M tokens/min input |
-| Cost after free | ~$0.075/1M input tokens (negligible) |
-| Context window | 1M tokens — covers hour-long transcripts |
-| API Key | Get from [aistudio.google.com](https://aistudio.google.com) → **Get API key** (free, no credit card) |
-| Integration | Simple `fetch()` POST in Node.js — no SDK needed |
-
-### API call
-
-```js
-POST https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}
-Content-Type: application/json
-
-{
-  "system_instruction": { "parts": [{ "text": "You categorize video transcripts." }] },
-  "contents": [{ "parts": [{ "text": "Transcript: ...\n\nReturn JSON." }] }]
-}
-```
-
-Returns:
-
-```json
-{
-  "candidates": [{
-    "content": {
-      "parts": [{ "text": "{\"category\":\"technology\",\"tags\":[\"AI\",\"machine learning\",\"tutorial\"],\"summary\":\"An introduction to transformer models...\"}" }]
-    }
-  }]
-}
-```
+- ✅ Async transcription pipeline (Cloud Run Service + Cloud Tasks + Cloud Run Job)
+- ✅ Whisper speech-to-text with progress tracking
+- ✅ Telegram bot interface (send URL, receive result)
+- ✅ AI post-processing via Gemini 1.5 Flash (summary, key takeaways, tips & tricks, category, tags, chapters, quotes, action items, tone)
+- ✅ Collapsible AI Analysis UI on each transcription card
+- ✅ Telegram notification includes summary and top tips
+- ✅ One-off backfill script to analyse existing videos (`scripts/reanalyse.js`)
 
 ---
 
-## 2. Schema — new columns in `videos` table
+## Still to do
 
-No new tables needed. Add three columns to the existing `videos` table:
+### Infrastructure / DevOps
 
-```sql
-alter table videos add column if not exists category text;
-alter table videos add column if not exists tags     jsonb default '[]';
-alter table videos add column if not exists summary  text;
-
--- RLS policies already cover all columns via "anon can update"
-```
-
-### Column reference
-
-| Column | Type | Example |
-|--------|------|---------|
-| `category` | `text` | `"technology"` |
-| `tags` | `jsonb` | `["AI", "machine learning", "tutorial"]` |
-| `summary` | `text` | `"An introduction to transformer models for NLP tasks."` |
+- [ ] **Secret Manager via Terraform** — move `GEMINI_API_KEY` (and other secrets) into GCP Secret Manager managed by Terraform, and reference via `--set-secrets` in Cloud Run instead of `--set-env-vars`. Cleaner, audited, no secrets in env vars.
+- [ ] **Gate Terraform apply** — `terraform-infra.yml` currently auto-applies on every push to `infra/**`. Add a manual approval step or restrict `apply` to `workflow_dispatch` only to prevent accidental infra changes.
+- [ ] **Image SHA tagging** — Docker images are only tagged `latest`. Add git SHA tag (`app:${{ github.sha }}`) to enable rollback and trace which commit is running in production.
+- [ ] **Post-deploy health check** — after Cloud Run deploy, curl `/health` and fail the workflow if the service doesn't respond, rather than silently succeeding.
 
 ---
 
-## 3. Architecture — inline in `processVideo`
+## Next feature ideas
 
-Categorization runs **inside** the existing `processVideo` function, right after Whisper returns the transcript, before saving to Supabase.
+### 1. Per-category webhook actions
+
+After AI analysis assigns a category, automatically route the result to different destinations:
 
 ```
-processVideo(id, url, chatId):
-  1. yt-dlp download
-  2. ffmpeg extract audio
-  3. Whisper transcribe  ──────▶  text
-  4. Gemini categorize  ───────▶  { category, tags, summary }
-  5. Save to Supabase: status='done', transcript, category, tags, summary
-  6. Telegram: "✅ {category} — {summary}"
+category = "marketing"  → post summary + tips to a Notion database
+category = "education"  → save to Google Docs
+category = "technology" → send to a Slack channel
 ```
 
-Non-blocking: if Gemini fails, the video is still saved as `done` with the transcript but null category. The error is logged but doesn't fail the pipeline.
-
-Uses the existing `JobQueue` for concurrency control — categorization is just one more async step in the pipeline.
+Implementation: add `CATEGORY_<NAME>_WEBHOOK` env vars and a post-categorization dispatch step in `pipeline.js`.
 
 ---
 
-## 4. Prompt design
+### 2. Agent-based processing per entry
+
+Instead of a single fixed pipeline, each transcription entry could trigger a **specialist AI agent** to do deeper work based on the category:
 
 ```
-System:
-  You are a video categorization assistant. Categorize the transcript
-  and return valid JSON only (no markdown, no code fences).
-
-User:
-  Transcript:
-  {transcript}
-
-  Return JSON with exactly these fields:
-    - category: one of technology, cooking, news, education, entertainment, music, sports, other
-    - tags: array of 3-5 short keywords in the transcript's language
-    - summary: 1-2 sentence summary in the transcript's language
-    - language: BCP-47 code of the transcript language (e.g., "en", "es", "ja")
+Transcription done
+      │
+      ├── category = "marketing"
+      │       └── spawn MarketingAgent
+      │               ├── extract hook, CTA, and headline ideas
+      │               ├── score virality potential 1-10
+      │               └── post structured report to Telegram
+      │
+      ├── category = "education"
+      │       └── spawn StudyAgent
+      │               ├── generate flashcards / quiz questions
+      │               ├── create a structured study guide
+      │               └── export to Notion
+      │
+      └── category = "technology"
+              └── spawn TechAgent
+                      ├── extract code snippets or commands mentioned
+                      ├── identify tools/libraries referenced
+                      └── generate a "what I learned" summary
 ```
 
-Adding `language` lets us later support translation and language-specific routing.
+Each agent runs independently, reports back to Telegram when done, and can call external APIs (Notion, Sheets, etc.). This is the natural evolution once webhook routing is in place.
 
 ---
 
-## 5. Files to modify
+### 3. Ask questions about a video (RAG via Telegram)
 
-| File | Change |
-|------|--------|
-| `schema.sql` | Add `category`, `tags`, `summary` columns |
-| `server.js` | Add `GEMINI_API_KEY` config, `categorizeTranscript()` function, integrate into `processVideo` |
-| `.env.example` | Add `GEMINI_API_KEY=` |
-| `infra/main.tf` | Add `GEMINI_API_KEY` env var to Cloud Run |
-| `.github/workflows/deploy.yml` | Add `GEMINI_API_KEY` to secrets |
-| `public/index.html` | Show category and summary in result cards |
-| `README.md` | Add categorization section, update config table |
+Let users ask questions about any transcribed video directly in Telegram:
+
+```
+User: /ask <video_id> what did they say about thumbnail design?
+Bot: At around the 12-minute mark, the creator said...
+```
+
+Implementation: store transcript chunks as vector embeddings in Supabase (`pgvector`), retrieve relevant chunks on query, pass to Gemini with context.
 
 ---
 
-## 6. Gemini response handling
+### 4. Cross-video search
 
-```js
-async function categorizeTranscript(transcript) {
-  if (!GEMINI_API_KEY || !transcript) return null;
-
-  const prompt = `...`;  // see section 4
-
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-      },
-    );
-    if (!res.ok) throw new Error(`Gemini ${res.status}: ${await res.text()}`);
-
-    const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error('Empty Gemini response');
-
-    return JSON.parse(text.replace(/```json|```/g, '').trim());
-  } catch (err) {
-    logger.warn({ err: err.message }, 'categorization failed');
-    return null;  // non-blocking — video still saved as done
-  }
-}
-```
+"Find all videos where they mention CTR" — semantic search across all transcripts using vector embeddings. Would require adding `pgvector` extension to Supabase and an embedding step in the pipeline.
 
 ---
 
-## 7. Cost estimate (100 videos/month)
+### 5. Export to Notion / Google Docs
 
-| Service | Cost |
-|---------|------|
-| Gemini 1.5 Flash | Free (1,500 req/day limit, we use ~3/day) |
-| Cloud Run | ~$0.05 (10 min/video, free tier covers most) |
-| Supabase | Free tier (500 MB DB) |
-| **Total** | **~$0.05/month** |
+After transcription + AI analysis, push a structured document to:
+- **Notion**: title, summary, key takeaways, tips, full transcript as a toggle
+- **Google Docs**: formatted doc with chapters as headings
+
+Triggered manually ("export this video") or automatically per category.
 
 ---
 
-## 8. Future: categories → downstream actions (placeholder)
+### 6. Translation
 
-Once categorization is in place, the next phase is per-category action triggers:
+After transcription, optionally translate the transcript and summary to another language. Gemini can handle this in the same API call. Add a `TRANSLATE_TO` env var (e.g. `es`, `fr`, `pt`).
 
-```env
-CATEGORY_TECHNOLOGY_WEBHOOK=https://notion.example.com/tech
-CATEGORY_COOKING_WEBHOOK=https://sheets.example.com/recipes
-CATEGORY_NEWS_WEBHOOK=https://slack.example.com/news
+---
+
+### 7. Speaker diarization
+
+Identify who is speaking when in multi-speaker videos (interviews, podcasts). Whisper doesn't do this natively — would require an additional model (e.g. `pyannote.audio`) or a third-party API (AssemblyAI).
+
+---
+
+### 8. Smarter Whisper model selection
+
+Currently model is fixed at deploy time. Could auto-select based on video duration:
+- < 10 min → `small` (fast, accurate)
+- 10–60 min → `tiny` (stays within Cloud Run Job budget)
+- > 60 min → `tiny` with chunked processing
+
+---
+
+## Architecture direction
+
+The natural evolution of this app is towards a **pipeline of agents**:
+
+```
+Video URL
+   └─▶ Transcription Worker (Whisper)
+           └─▶ Analysis Agent (Gemini — current)
+                   └─▶ Specialist Agent (per category — next)
+                           └─▶ Delivery Agent (Notion / Slack / Telegram)
 ```
 
-In `server.js`, after categorization succeed:
-
-```js
-if (category && process.env[`CATEGORY_${category.toUpperCase()}_WEBHOOK`]) {
-  jobQueue.add(() => postToWebhook(category, { url, transcript, summary, tags }));
-}
-```
-
-Webhook payload design to be finalized when this phase starts.
+Each stage is decoupled via Cloud Tasks, runs independently, and reports status back to Supabase. The user interacts only via Telegram and the web UI — the whole pipeline runs silently in the background.
