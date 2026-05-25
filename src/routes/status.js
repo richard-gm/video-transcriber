@@ -9,7 +9,7 @@ const router = Router();
 router.get('/api/status/:id', async (req, res) => {
   const { data, error } = await supabase
     .from(config.SUPABASE_TABLE)
-    .select('id, url, status, transcript, error, progress, created_at, processed_at')
+    .select('id, url, status, transcript, error, progress, created_at, processed_at, summary, key_takeaways, tips_and_tricks, category, tags, chapters, quotes, action_items, tone')
     .eq('id', req.params.id)
     .single();
 

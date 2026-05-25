@@ -39,3 +39,21 @@ create policy "anon can update"
   on videos for update
   to anon
   using (true);
+
+create policy "anon can delete"
+  on videos for delete
+  to anon
+  using (true);
+
+-- AI analysis columns (added in phase 2)
+alter table videos add column if not exists summary text;
+alter table videos add column if not exists key_takeaways jsonb;
+alter table videos add column if not exists tips_and_tricks jsonb;
+alter table videos add column if not exists category text;
+alter table videos add column if not exists tags jsonb;
+alter table videos add column if not exists chapters jsonb;
+alter table videos add column if not exists quotes jsonb;
+alter table videos add column if not exists action_items jsonb;
+alter table videos add column if not exists tone text;
+
+create index if not exists videos_category_idx on videos (category);

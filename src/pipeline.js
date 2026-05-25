@@ -7,6 +7,7 @@ const os = require('os');
 const { config, logger } = require('./config');
 const { downloadVideo, extractAudio, getAudioDuration } = require('./lib/video');
 const { transcribeAudio } = require('./lib/whisper');
+const { analyseTranscript } = require('./lib/gemini');
 const { sendTelegramMessage } = require('./lib/telegram');
 
 class CancelledError extends Error {
@@ -79,6 +80,9 @@ async function runPipeline(videoId) {
     }, () => checkCancelled(supabase, videoId));
 
     await checkCancelled(supabase, videoId);
+    writeProgress(90, 'analysing', 'Extracting insights...');
+    const analysis = await analyseTranscript(text);
+
     writeProgress(95, 'saving', 'Saving result...');
     await supabase
       .from(config.SUPABASE_TABLE)
@@ -87,11 +91,26 @@ async function runPipeline(videoId) {
         transcript: text,
         progress: { percentage: 100, stage: 'done', message: 'Complete' },
         processed_at: new Date().toISOString(),
+        ...(analysis ? {
+          summary: analysis.summary,
+          key_takeaways: analysis.key_takeaways,
+          tips_and_tricks: analysis.tips_and_tricks,
+          category: analysis.category,
+          tags: analysis.tags,
+          chapters: analysis.chapters,
+          quotes: analysis.quotes,
+          action_items: analysis.action_items,
+          tone: analysis.tone,
+        } : {}),
       })
       .eq('id', videoId);
 
     logger.info({ videoId }, 'processing complete');
-    await sendTelegramMessage(job.chat_id, '✅ Done\n' + job.url);
+
+    const notifyText = analysis?.summary
+      ? `✅ Done\n\n📝 ${analysis.summary}${analysis.tips_and_tricks?.length ? '\n\n💡 Tips:\n' + analysis.tips_and_tricks.slice(0, 3).map(t => `• ${t}`).join('\n') : ''}\n\n${job.url}`
+      : `✅ Done\n${job.url}`;
+    await sendTelegramMessage(job.chat_id, notifyText);
     return true;
   } catch (err) {
     if (err instanceof CancelledError) {

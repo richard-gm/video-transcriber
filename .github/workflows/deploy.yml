@@ -111,7 +111,8 @@ jobs:
             --set-env-vars="WHISPER_MODEL=${{ vars.WHISPER_MODEL || 'base' }}" \
             --set-env-vars="TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" \
             --set-env-vars="WHISPER_THREADS=2" \
-            --set-env-vars="LOG_LEVEL=info"
+            --set-env-vars="LOG_LEVEL=info" \
+            --set-env-vars="GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}"
 
       - name: Show deploy URL
         run: |

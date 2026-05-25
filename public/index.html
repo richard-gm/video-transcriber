@@ -246,6 +246,98 @@
       transition: color 0.2s;
     }
     .delete-btn:hover { color: #f87171; }
+
+    .ai-section {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #222;
+    }
+    .ai-header {
+      font-size: 0.7rem;
+      color: #7dd3fc;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+    .ai-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-bottom: 0.6rem;
+    }
+    .ai-badge {
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-transform: capitalize;
+    }
+    .badge-category { background: #1e3a5f; color: #7dd3fc; }
+    .badge-tone { background: #2a2a1e; color: #fcd34d; }
+    .ai-tags {
+      font-size: 0.75rem;
+      color: #555;
+      margin-bottom: 0.75rem;
+    }
+    .ai-summary {
+      font-size: 0.85rem;
+      color: #ccc;
+      line-height: 1.6;
+      margin-bottom: 0.75rem;
+    }
+    .collapsible { margin-bottom: 0.6rem; }
+    .collapsible-toggle {
+      font-size: 0.72rem;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      user-select: none;
+      background: none;
+      border: none;
+      padding: 0;
+      width: 100%;
+      text-align: left;
+    }
+    .collapsible-toggle:hover { color: #e8e8e8; }
+    .collapsible-toggle .arrow { font-size: 0.6rem; transition: transform 0.2s; }
+    .collapsible-toggle.open .arrow { transform: rotate(90deg); }
+    .collapsible-body {
+      display: none;
+      font-size: 0.83rem;
+      color: #bbb;
+      margin-top: 0.4rem;
+      padding-left: 0.5rem;
+    }
+    .collapsible-body.open { display: block; }
+    .collapsible-body ul { list-style: none; padding: 0; }
+    .collapsible-body li {
+      padding: 0.25rem 0 0.25rem 1.1rem;
+      position: relative;
+      line-height: 1.5;
+    }
+    .collapsible-body li::before { content: '•'; position: absolute; left: 0; color: #444; }
+    .tips-body { color: #fcd34d; }
+    .tips-body li::before { color: #fcd34d; content: '💡'; font-size: 0.7rem; }
+    .action-body li::before { content: '☐'; color: #888; }
+    .collapsible-body blockquote {
+      border-left: 2px solid #333;
+      padding-left: 0.75rem;
+      font-style: italic;
+      color: #999;
+      margin: 0.35rem 0;
+    }
+    .chapter-item {
+      margin-bottom: 0.5rem;
+      padding: 0.5rem 0.65rem;
+      background: #111;
+      border-radius: 6px;
+    }
+    .chapter-meta { font-size: 0.68rem; color: #555; margin-bottom: 0.15rem; }
+    .chapter-title { font-size: 0.8rem; color: #e8e8e8; font-weight: 500; }
+    .chapter-summary { font-size: 0.75rem; color: #777; margin-top: 0.2rem; line-height: 1.4; }
   </style>
 </head>
 <body>
@@ -382,6 +474,71 @@
       return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
+    function renderCollapsible(id, label, bodyHtml, bodyClass = '') {
+      const uid = `cl-${id}-${label.replace(/\s+/g, '')}`;
+      return `
+        <div class="collapsible">
+          <button class="collapsible-toggle" onclick="toggleCollapsible('${uid}')">
+            <span class="arrow">▶</span> ${escHtml(label)}
+          </button>
+          <div class="collapsible-body ${bodyClass}" id="${uid}">${bodyHtml}</div>
+        </div>`;
+    }
+
+    function renderAiSection(entry) {
+      if (!entry.summary && !entry.category && !entry.tone) return '';
+      const id = entry.id;
+      let html = '<div class="ai-section"><div class="ai-header">✨ AI Analysis</div>';
+
+      if (entry.category || entry.tone) {
+        html += '<div class="ai-badges">';
+        if (entry.category) html += `<span class="ai-badge badge-category">${escHtml(entry.category)}</span>`;
+        if (entry.tone) html += `<span class="ai-badge badge-tone">${escHtml(entry.tone)}</span>`;
+        html += '</div>';
+      }
+
+      if (entry.tags?.length) {
+        html += `<div class="ai-tags">${entry.tags.map(t => `#${escHtml(t)}`).join(' ')}</div>`;
+      }
+
+      if (entry.summary) {
+        html += `<div class="ai-summary">${escHtml(entry.summary)}</div>`;
+      }
+
+      if (entry.key_takeaways?.length) {
+        const items = entry.key_takeaways.map(t => `<li>${escHtml(t)}</li>`).join('');
+        html += renderCollapsible(id, 'Key Takeaways', `<ul>${items}</ul>`);
+      }
+
+      if (entry.tips_and_tricks?.length) {
+        const items = entry.tips_and_tricks.map(t => `<li>${escHtml(t)}</li>`).join('');
+        html += renderCollapsible(id, 'Tips & Tricks', `<ul>${items}</ul>`, 'tips-body');
+      }
+
+      if (entry.chapters?.length) {
+        const items = entry.chapters.map(c => `
+          <div class="chapter-item">
+            <div class="chapter-meta">${escHtml(c.start_time || '')}</div>
+            <div class="chapter-title">${escHtml(c.title)}</div>
+            ${c.summary ? `<div class="chapter-summary">${escHtml(c.summary)}</div>` : ''}
+          </div>`).join('');
+        html += renderCollapsible(id, 'Chapters', items);
+      }
+
+      if (entry.quotes?.length) {
+        const items = entry.quotes.map(q => `<blockquote>${escHtml(q)}</blockquote>`).join('');
+        html += renderCollapsible(id, 'Quotes', items);
+      }
+
+      if (entry.action_items?.length) {
+        const items = entry.action_items.map(t => `<li>${escHtml(t)}</li>`).join('');
+        html += renderCollapsible(id, 'Action Items', `<ul>${items}</ul>`, 'action-body');
+      }
+
+      html += '</div>';
+      return html;
+    }
+
     function renderCard(entry) {
       const date = new Date(entry.created_at).toLocaleString();
       const error = entry.error ? `<div class="error">${escHtml(entry.error)}</div>` : '';
@@ -405,6 +562,7 @@
           ${statusLabel}
           ${transcriptHtml}
           ${error}
+          ${renderAiSection(entry)}
           <div class="result-date">${date} ${toggleBtnHtml}<button class="delete-btn" onclick="deleteEntry('${escHtml(entry.id)}')">delete</button></div>
         </div>`;
     }
@@ -490,6 +648,14 @@
         btn.textContent = 'show more';
         el.__collapsed = true;
       }
+    };
+
+    window.toggleCollapsible = function (uid) {
+      const body = document.getElementById(uid);
+      if (!body) return;
+      const toggle = body.previousElementSibling;
+      body.classList.toggle('open');
+      if (toggle) toggle.classList.toggle('open');
     };
 
     // Allow Enter key to submit
