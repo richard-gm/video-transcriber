@@ -91,7 +91,14 @@ async function runPipeline(videoId) {
         transcript: text,
         progress: { percentage: 100, stage: 'done', message: 'Complete' },
         processed_at: new Date().toISOString(),
-        ...(analysis ? {
+      })
+      .eq('id', videoId);
+
+    if (analysis) {
+      await supabase
+        .from('video_analysis')
+        .upsert({
+          video_id: videoId,
           summary: analysis.summary,
           key_takeaways: analysis.key_takeaways,
           tips_and_tricks: analysis.tips_and_tricks,
@@ -101,9 +108,9 @@ async function runPipeline(videoId) {
           quotes: analysis.quotes,
           action_items: analysis.action_items,
           tone: analysis.tone,
-        } : {}),
-      })
-      .eq('id', videoId);
+          analysed_at: new Date().toISOString(),
+        });
+    }
 
     logger.info({ videoId }, 'processing complete');
 

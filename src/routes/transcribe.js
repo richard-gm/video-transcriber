@@ -7,6 +7,7 @@ const { runPipeline } = require('../pipeline');
 const localQueue = require('../lib/local-queue');
 const { config, logger } = require('../config');
 const apiLimiter = require('../middleware/rate-limit');
+const { detectPlatform } = require('../lib/platform');
 
 const router = Router();
 
@@ -26,7 +27,7 @@ router.post('/process', apiLimiter, async (req, res) => {
 
   const { data, error } = await supabase
     .from(config.SUPABASE_TABLE)
-    .insert({ url, status: 'pending' })
+    .insert({ url, status: 'pending', platform: detectPlatform(url) })
     .select()
     .single();
 

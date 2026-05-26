@@ -1,10 +1,11 @@
--- Complete schema — run this on a fresh Supabase project.
--- For existing projects, run migrations/002_star_schema.sql instead.
+-- Migration 002: Star schema refactor
+-- Run in Supabase → SQL Editor
+-- Splits the monolithic videos table into a star schema.
 
--- ── platforms ──────────────────────────────────────────────────────────────────
+-- ── 1. Platforms lookup table ──────────────────────────────────────────────────
 create table if not exists platforms (
-  id            text primary key,
-  display_name  text not null,
+  id           text primary key,
+  display_name text not null,
   viral_weights jsonb not null default '{}'
 );
 
@@ -21,32 +22,10 @@ on conflict (id) do nothing;
 alter table platforms enable row level security;
 create policy "anon can select platforms" on platforms for select to anon using (true);
 
--- ── videos (core fact table) ───────────────────────────────────────────────────
-create table if not exists videos (
-  id           uuid primary key default gen_random_uuid(),
-  url          text not null,
-  status       text not null default 'pending', -- pending|processing|done|error|cancelled
-  transcript   text,
-  error        text,
-  chat_id      text,
-  progress     jsonb default '{}',              -- {percentage, stage, message, eta}
-  platform     text references platforms(id) default 'unknown',
-  created_at   timestamptz default now(),
-  processed_at timestamptz
-);
+-- ── 2. Add platform FK to videos ───────────────────────────────────────────────
+alter table videos add column if not exists platform text references platforms(id) default 'unknown';
 
-create index if not exists videos_status_idx   on videos (status);
-create index if not exists videos_platform_idx on videos (platform);
-
-alter publication supabase_realtime add table videos;
-
-alter table videos enable row level security;
-create policy "anon can insert" on videos for insert to anon with check (true);
-create policy "anon can select" on videos for select to anon using (true);
-create policy "anon can update" on videos for update to anon using (true);
-create policy "anon can delete" on videos for delete to anon using (true);
-
--- ── video_analysis (AI content analysis, 1:1 with videos) ─────────────────────
+-- ── 3. video_analysis satellite table ─────────────────────────────────────────
 create table if not exists video_analysis (
   video_id        uuid primary key references videos(id) on delete cascade,
   summary         text,
@@ -61,13 +40,39 @@ create table if not exists video_analysis (
   analysed_at     timestamptz default now()
 );
 
-alter table video_analysis enable row level security;
-create policy "anon can select video_analysis" on video_analysis for select to anon using (true);
-create policy "anon can insert video_analysis" on video_analysis for insert to anon with check (true);
-create policy "anon can update video_analysis" on video_analysis for update to anon using (true);
-create policy "anon can delete video_analysis" on video_analysis for delete to anon using (true);
+-- Migrate existing AI data out of videos
+insert into video_analysis (
+  video_id, summary, key_takeaways, tips_and_tricks,
+  category, tags, chapters, quotes, action_items, tone, analysed_at
+)
+select
+  id, summary, key_takeaways, tips_and_tricks,
+  category, tags, chapters, quotes, action_items, tone,
+  coalesce(processed_at, now())
+from videos
+where summary is not null
+   or key_takeaways is not null
+   or category is not null
+on conflict (video_id) do nothing;
 
--- ── video_viral_scores (viral scoring, 1:1 with videos) ───────────────────────
+-- Drop old AI columns from videos
+alter table videos drop column if exists summary;
+alter table videos drop column if exists key_takeaways;
+alter table videos drop column if exists tips_and_tricks;
+alter table videos drop column if exists category;
+alter table videos drop column if exists tags;
+alter table videos drop column if exists chapters;
+alter table videos drop column if exists quotes;
+alter table videos drop column if exists action_items;
+alter table videos drop column if exists tone;
+
+alter table video_analysis enable row level security;
+create policy "anon can select video_analysis"  on video_analysis for select  to anon using (true);
+create policy "anon can insert video_analysis"  on video_analysis for insert  to anon with check (true);
+create policy "anon can update video_analysis"  on video_analysis for update  to anon using (true);
+create policy "anon can delete video_analysis"  on video_analysis for delete  to anon using (true);
+
+-- ── 4. video_viral_scores satellite table ─────────────────────────────────────
 create table if not exists video_viral_scores (
   video_id                uuid primary key references videos(id) on delete cascade,
   absolute_score          integer check (absolute_score between 0 and 100),
@@ -88,7 +93,7 @@ create policy "anon can select video_viral_scores" on video_viral_scores for sel
 create policy "anon can insert video_viral_scores" on video_viral_scores for insert to anon with check (true);
 create policy "anon can update video_viral_scores" on video_viral_scores for update to anon using (true);
 
--- ── viral_references (baseline corpus of known viral videos) ──────────────────
+-- ── 5. viral_references baseline corpus ───────────────────────────────────────
 create table if not exists viral_references (
   id             uuid primary key default gen_random_uuid(),
   platform       text references platforms(id),
@@ -105,7 +110,7 @@ create policy "anon can select viral_references" on viral_references for select 
 create policy "anon can insert viral_references" on viral_references for insert to anon with check (true);
 create policy "anon can update viral_references" on viral_references for update to anon using (true);
 
--- ── chat_sessions + chat_messages (persistent in-app chat) ────────────────────
+-- ── 6. Persistent chat tables ──────────────────────────────────────────────────
 create table if not exists chat_sessions (
   id         uuid primary key default gen_random_uuid(),
   title      text,
@@ -133,7 +138,7 @@ create policy "anon can select chat_messages" on chat_messages for select to ano
 create policy "anon can insert chat_messages" on chat_messages for insert to anon with check (true);
 create policy "anon can delete chat_messages" on chat_messages for delete to anon using (true);
 
--- ── video_frames (TODO: frame-level vision analysis) ──────────────────────────
+-- ── 7. video_frames stub (TODO: frame-level vision analysis) ───────────────────
 create table if not exists video_frames (
   id             uuid primary key default gen_random_uuid(),
   video_id       uuid not null references videos(id) on delete cascade,

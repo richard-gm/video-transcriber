@@ -9,7 +9,7 @@ const router = Router();
 router.get('/api/status/:id', async (req, res) => {
   const { data, error } = await supabase
     .from(config.SUPABASE_TABLE)
-    .select('id, url, status, transcript, error, progress, created_at, processed_at, summary, key_takeaways, tips_and_tricks, category, tags, chapters, quotes, action_items, tone')
+    .select('id, url, status, transcript, error, progress, platform, created_at, processed_at, video_analysis(*)')
     .eq('id', req.params.id)
     .single();
 
@@ -21,7 +21,8 @@ router.get('/api/status/:id', async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 
-  res.json(data);
+  const { video_analysis, ...video } = data;
+  res.json({ ...video, ...(video_analysis || {}) });
 });
 
 module.exports = router;
