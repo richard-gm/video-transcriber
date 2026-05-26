@@ -1,6 +1,27 @@
 -- Complete schema — run this on a fresh Supabase project.
 -- For existing projects, run migrations/002_star_schema.sql instead.
 
+-- ── niches ────────────────────────────────────────────────────────────────────
+create table if not exists niches (
+  id           text primary key,
+  display_name text not null
+);
+
+insert into niches (id, display_name) values
+  ('business',   'Business'),
+  ('ai',         'AI & Technology'),
+  ('finance',    'Finance'),
+  ('fitness',    'Fitness & Health'),
+  ('lifestyle',  'Lifestyle'),
+  ('education',  'Education'),
+  ('marketing',  'Marketing'),
+  ('other',      'Other')
+on conflict (id) do nothing;
+
+alter table niches enable row level security;
+create policy "anon can select niches" on niches for select to anon using (true);
+create policy "anon can insert niches" on niches for insert to anon with check (true);
+
 -- ── platforms ──────────────────────────────────────────────────────────────────
 create table if not exists platforms (
   id            text primary key,
@@ -92,6 +113,7 @@ create policy "anon can update video_viral_scores" on video_viral_scores for upd
 create table if not exists viral_references (
   id             uuid primary key default gen_random_uuid(),
   platform       text references platforms(id),
+  niche          text references niches(id),
   url            text not null,
   view_count     bigint,
   source_site    text,
