@@ -12,34 +12,24 @@
       background: #0f0f0f;
       color: #e8e8e8;
       min-height: 100vh;
-      padding: 2rem 1rem;
     }
 
-    .container { max-width: 720px; margin: 0 auto; }
-
-    h1 {
-      font-size: 1.6rem;
-      font-weight: 600;
-      margin-bottom: 0.4rem;
-      color: #fff;
+    /* ── Page shell ── */
+    .page-header {
+      padding: 2rem 1.5rem 1.25rem;
+      max-width: 1100px;
+      margin: 0 auto;
     }
+    h1 { font-size: 1.6rem; font-weight: 600; color: #fff; margin-bottom: 0.3rem; }
+    .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 1.5rem; }
 
-    .subtitle {
-      color: #888;
-      font-size: 0.9rem;
-      margin-bottom: 2rem;
-    }
-
-    .card {
+    .submit-card {
       background: #1a1a1a;
       border: 1px solid #2a2a2a;
       border-radius: 12px;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
+      padding: 1.25rem 1.5rem;
     }
-
     label { display: block; font-size: 0.85rem; color: #aaa; margin-bottom: 0.5rem; }
-
     input[type="url"] {
       width: 100%;
       padding: 0.75rem 1rem;
@@ -53,11 +43,10 @@
     }
     input[type="url"]:focus { border-color: #555; }
     input[type="url"]::placeholder { color: #444; }
-
-    button {
-      margin-top: 1rem;
-      width: 100%;
-      padding: 0.75rem;
+    .submit-row { display: flex; gap: 0.75rem; margin-top: 0.75rem; align-items: flex-start; }
+    .submit-row input[type="url"] { flex: 1; margin: 0; }
+    .btn-primary {
+      padding: 0.75rem 1.5rem;
       background: #fff;
       color: #000;
       border: none;
@@ -65,19 +54,122 @@
       font-size: 0.95rem;
       font-weight: 600;
       cursor: pointer;
+      white-space: nowrap;
       transition: opacity 0.2s;
+      flex-shrink: 0;
+      margin-top: 0;
     }
-    button:disabled { opacity: 0.4; cursor: not-allowed; }
-
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
     .status {
-      margin-top: 1rem;
+      margin-top: 0.75rem;
       font-size: 0.85rem;
       color: #888;
       min-height: 1.2em;
     }
-
     .error { color: #f87171; }
 
+    /* ── Two-column layout ── */
+    .page-body {
+      display: flex;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.5rem 1.5rem 3rem;
+      gap: 1.5rem;
+      align-items: flex-start;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 180px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 1.5rem;
+    }
+    .sidebar-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #444;
+      margin-bottom: 0.6rem;
+      padding-left: 0.5rem;
+    }
+    .cat-list { list-style: none; }
+    .cat-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.45rem 0.65rem;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: #888;
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+      text-transform: capitalize;
+    }
+    .cat-item:hover { background: #1a1a1a; color: #ccc; }
+    .cat-item.active { background: #1e3a5f; color: #7dd3fc; font-weight: 500; }
+    .cat-count {
+      font-size: 0.7rem;
+      background: #222;
+      color: #555;
+      border-radius: 10px;
+      padding: 1px 7px;
+      min-width: 22px;
+      text-align: center;
+    }
+    .cat-item.active .cat-count { background: #163352; color: #7dd3fc; }
+
+    /* ── Mobile category pills (hidden on desktop) ── */
+    .mobile-cats {
+      display: none;
+      overflow-x: auto;
+      gap: 0.4rem;
+      padding: 0 1.5rem 1rem;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .mobile-cats::-webkit-scrollbar { display: none; }
+    .cat-pill {
+      flex-shrink: 0;
+      padding: 0.35rem 0.85rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      border: 1px solid #2a2a2a;
+      background: #1a1a1a;
+      color: #888;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      text-transform: capitalize;
+    }
+    .cat-pill:hover { background: #222; color: #ccc; }
+    .cat-pill.active { background: #1e3a5f; color: #7dd3fc; border-color: #1e3a5f; }
+
+    /* ── Main content ── */
+    .main-content { flex: 1; min-width: 0; }
+    .content-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .content-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #444;
+      text-transform: capitalize;
+    }
+    .content-count { font-size: 0.75rem; color: #444; }
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #444;
+      font-size: 0.9rem;
+    }
+
+    /* ── Video cards ── */
     .result-card {
       background: #1a1a1a;
       border: 1px solid #2a2a2a;
@@ -85,283 +177,147 @@
       padding: 1.25rem;
       margin-bottom: 1rem;
     }
-
-    .result-url {
-      font-size: 0.75rem;
-      color: #666;
-      word-break: break-all;
-      margin-bottom: 0.6rem;
-    }
+    .result-url { font-size: 0.75rem; color: #666; word-break: break-all; margin-bottom: 0.6rem; }
     .toggle-btn {
-      background: none;
-      border: none;
-      color: #7dd3fc;
-      font-size: 0.7rem;
-      cursor: pointer;
-      padding: 0;
-      text-decoration: underline;
-      margin-left: 1rem;
+      background: none; border: none; color: #7dd3fc; font-size: 0.7rem;
+      cursor: pointer; padding: 0; text-decoration: underline; margin-left: 1rem;
     }
     .toggle-btn:hover { color: #99e6ff; }
+    .result-text { font-size: 0.85rem; white-space: pre-wrap; }
+    .result-date { font-size: 0.7rem; color: #555; margin-top: 0.6rem; }
 
-    .result-text {
-      font-size: 0.85rem;
-      white-space: pre-wrap;
-    }
-
-    .result-date {
-      font-size: 0.7rem;
-      color: #555;
-      margin-top: 0.6rem;
-    }
-
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.6);
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-    }
-    .modal-overlay.active {
-      display: flex;
-    }
-    .modal-box {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 12px;
-      padding: 1.5rem;
-      max-width: 360px;
-      width: 90%;
-      text-align: center;
-    }
-    .modal-box p {
-      font-size: 0.9rem;
-      margin-bottom: 1.25rem;
-      color: #e8e8e8;
-    }
-    .modal-actions {
-      display: flex;
-      gap: 0.75rem;
-      justify-content: center;
-    }
-    .modal-actions button {
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      cursor: pointer;
-      border: 1px solid #333;
-      background: #111;
-      color: #aaa;
-      transition: background 0.2s;
-    }
-    .modal-actions button:hover { background: #222; }
-    .modal-actions .modal-danger {
-      background: transparent;
-      color: #f87171;
-      border-color: #f87171;
-    }
-    .modal-actions .modal-danger:hover { background: #3b1a1a; }
-
-    .section-title {
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #555;
-      margin-bottom: 1rem;
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      border: 2px solid #444;
-      border-top-color: #aaa;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      vertical-align: middle;
-      margin-right: 6px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
+    /* ── Status badges ── */
     .status-badge {
-      display: inline-block;
-      font-size: 0.7rem;
-      padding: 2px 8px;
-      border-radius: 4px;
-      margin-bottom: 0.5rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      display: inline-block; font-size: 0.7rem; padding: 2px 8px;
+      border-radius: 4px; margin-bottom: 0.5rem;
+      text-transform: uppercase; letter-spacing: 0.05em;
     }
-    .status-badge.pending { background: #333; color: #aaa; }
-    .status-badge.processing { background: #1e3a5f; color: #7dd3fc; }
-    .status-badge.error { background: #3b1a1a; color: #f87171; }
+    .status-badge.pending   { background: #333; color: #aaa; }
+    .status-badge.processing{ background: #1e3a5f; color: #7dd3fc; }
+    .status-badge.error     { background: #3b1a1a; color: #f87171; }
     .status-badge.cancelled { background: #3b3b1a; color: #fcd34d; }
 
-    .progress-bar {
-      width: 100%;
-      height: 6px;
-      background: #2a2a2a;
-      border-radius: 3px;
-      margin-top: 0.75rem;
-      overflow: hidden;
-    }
-    .progress-bar-fill {
-      height: 100%;
-      background: #7dd3fc;
-      border-radius: 3px;
-      transition: width 1s ease;
-    }
-    .progress-info {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.8rem;
-      color: #888;
-      margin-top: 0.4rem;
-    }
-
+    /* ── Progress ── */
+    .progress-bar { width: 100%; height: 6px; background: #2a2a2a; border-radius: 3px; margin-top: 0.75rem; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: #7dd3fc; border-radius: 3px; transition: width 1s ease; }
+    .progress-info { display: flex; justify-content: space-between; font-size: 0.8rem; color: #888; margin-top: 0.4rem; }
     .cancel-btn {
-      padding: 0.25rem 0.6rem;
-      background: transparent;
-      color: #f87171;
-      border: 1px solid #f87171;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      cursor: pointer;
-      transition: background 0.2s;
-      vertical-align: middle;
+      padding: 0.25rem 0.6rem; background: transparent; color: #f87171;
+      border: 1px solid #f87171; border-radius: 4px; font-size: 0.75rem;
+      cursor: pointer; transition: background 0.2s; vertical-align: middle;
     }
     .cancel-btn:hover { background: #3b1a1a; }
 
+    /* ── Delete button ── */
     .delete-btn {
-      background: none;
-      border: none;
-      color: #666;
-      font-size: 0.7rem;
-      cursor: pointer;
-      padding: 0;
-      margin-left: 1rem;
-      text-decoration: underline;
-      transition: color 0.2s;
+      background: none; border: none; color: #666; font-size: 0.7rem;
+      cursor: pointer; padding: 0; margin-left: 1rem; text-decoration: underline; transition: color 0.2s;
     }
     .delete-btn:hover { color: #f87171; }
 
-    .ai-section {
-      margin-top: 1rem;
-      padding-top: 1rem;
-      border-top: 1px solid #222;
-    }
-    .ai-header {
-      font-size: 0.7rem;
-      color: #7dd3fc;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      margin-bottom: 0.75rem;
-    }
-    .ai-badges {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.35rem;
-      margin-bottom: 0.6rem;
-    }
-    .ai-badge {
-      font-size: 0.65rem;
-      padding: 2px 8px;
-      border-radius: 4px;
-      text-transform: capitalize;
-    }
+    /* ── AI section ── */
+    .ai-section { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #222; }
+    .ai-header { font-size: 0.7rem; color: #7dd3fc; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.75rem; }
+    .ai-badges { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.6rem; }
+    .ai-badge { font-size: 0.65rem; padding: 2px 8px; border-radius: 4px; text-transform: capitalize; }
     .badge-category { background: #1e3a5f; color: #7dd3fc; }
     .badge-tone { background: #2a2a1e; color: #fcd34d; }
-    .ai-tags {
-      font-size: 0.75rem;
-      color: #555;
-      margin-bottom: 0.75rem;
-    }
-    .ai-summary {
-      font-size: 0.85rem;
-      color: #ccc;
-      line-height: 1.6;
-      margin-bottom: 0.75rem;
-    }
+    .ai-tags { font-size: 0.75rem; color: #555; margin-bottom: 0.75rem; }
+    .ai-summary { font-size: 0.85rem; color: #ccc; line-height: 1.6; margin-bottom: 0.75rem; }
     .collapsible { margin-bottom: 0.6rem; }
     .collapsible-toggle {
-      font-size: 0.72rem;
-      color: #888;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 0.35rem;
-      user-select: none;
-      background: none;
-      border: none;
-      padding: 0;
-      width: 100%;
-      text-align: left;
+      font-size: 0.72rem; color: #888; text-transform: uppercase; letter-spacing: 0.06em;
+      cursor: pointer; display: flex; align-items: center; gap: 0.35rem;
+      user-select: none; background: none; border: none; padding: 0; width: 100%; text-align: left;
     }
     .collapsible-toggle:hover { color: #e8e8e8; }
     .collapsible-toggle .arrow { font-size: 0.6rem; transition: transform 0.2s; }
     .collapsible-toggle.open .arrow { transform: rotate(90deg); }
-    .collapsible-body {
-      display: none;
-      font-size: 0.83rem;
-      color: #bbb;
-      margin-top: 0.4rem;
-      padding-left: 0.5rem;
-    }
+    .collapsible-body { display: none; font-size: 0.83rem; color: #bbb; margin-top: 0.4rem; padding-left: 0.5rem; }
     .collapsible-body.open { display: block; }
     .collapsible-body ul { list-style: none; padding: 0; }
-    .collapsible-body li {
-      padding: 0.25rem 0 0.25rem 1.1rem;
-      position: relative;
-      line-height: 1.5;
-    }
+    .collapsible-body li { padding: 0.25rem 0 0.25rem 1.1rem; position: relative; line-height: 1.5; }
     .collapsible-body li::before { content: '•'; position: absolute; left: 0; color: #444; }
     .tips-body { color: #fcd34d; }
     .tips-body li::before { color: #fcd34d; content: '💡'; font-size: 0.7rem; }
     .action-body li::before { content: '☐'; color: #888; }
-    .collapsible-body blockquote {
-      border-left: 2px solid #333;
-      padding-left: 0.75rem;
-      font-style: italic;
-      color: #999;
-      margin: 0.35rem 0;
-    }
-    .chapter-item {
-      margin-bottom: 0.5rem;
-      padding: 0.5rem 0.65rem;
-      background: #111;
-      border-radius: 6px;
-    }
+    .collapsible-body blockquote { border-left: 2px solid #333; padding-left: 0.75rem; font-style: italic; color: #999; margin: 0.35rem 0; }
+    .chapter-item { margin-bottom: 0.5rem; padding: 0.5rem 0.65rem; background: #111; border-radius: 6px; }
     .chapter-meta { font-size: 0.68rem; color: #555; margin-bottom: 0.15rem; }
     .chapter-title { font-size: 0.8rem; color: #e8e8e8; font-weight: 500; }
     .chapter-summary { font-size: 0.75rem; color: #777; margin-top: 0.2rem; line-height: 1.4; }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid #444; border-top-color: #aaa;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 100;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 1.5rem; max-width: 360px; width: 90%; text-align: center; }
+    .modal-box p { font-size: 0.9rem; margin-bottom: 1.25rem; color: #e8e8e8; }
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: center; }
+    .modal-actions button { padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.85rem; cursor: pointer; border: 1px solid #333; background: #111; color: #aaa; transition: background 0.2s; margin-top: 0; width: auto; }
+    .modal-actions button:hover { background: #222; }
+    .modal-actions .modal-danger { background: transparent; color: #f87171; border-color: #f87171; }
+    .modal-actions .modal-danger:hover { background: #3b1a1a; }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      .page-header { padding: 1.5rem 1rem 1rem; }
+      .page-body { padding: 0 0 3rem; flex-direction: column; gap: 0; }
+      .sidebar { display: none; }
+      .mobile-cats { display: flex; }
+      .main-content { padding: 0 1rem; }
+      .submit-row { flex-direction: column; }
+      .btn-primary { width: 100%; }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Video Transcriber</h1>
-    <p class="subtitle">YouTube · TikTok · Instagram — download and transcribe locally</p>
 
-    <div class="card">
+  <div class="page-header">
+    <h1>Video Transcriber</h1>
+    <p class="subtitle">YouTube · TikTok · Instagram · LinkedIn — transcribe and analyse</p>
+    <div class="submit-card">
       <label for="url">Video URL</label>
-      <input
-        type="url"
-        id="url"
-        placeholder="https://www.youtube.com/watch?v=..."
-        autocomplete="off"
-        spellcheck="false"
-      />
-      <button id="submit-btn" onclick="processVideo()">Transcribe</button>
+      <div class="submit-row">
+        <input type="url" id="url" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" spellcheck="false" />
+        <button class="btn-primary" id="submit-btn" onclick="processVideo()">Transcribe</button>
+      </div>
       <div class="status" id="status"></div>
     </div>
+  </div>
 
-    <div id="history-section" style="display:none">
-      <p class="section-title">Previous transcriptions</p>
+  <!-- Mobile category pills -->
+  <div class="mobile-cats" id="mobile-cats"></div>
+
+  <div class="page-body">
+
+    <!-- Desktop sidebar -->
+    <aside class="sidebar" id="sidebar" style="display:none">
+      <div class="sidebar-label">Categories</div>
+      <ul class="cat-list" id="cat-list"></ul>
+    </aside>
+
+    <!-- Main content -->
+    <div class="main-content">
+      <div class="content-header" id="content-header" style="display:none">
+        <span class="content-title" id="content-title">All</span>
+        <span class="content-count" id="content-count"></span>
+      </div>
       <div id="history"></div>
+      <div class="empty-state" id="empty-state" style="display:none">No videos in this category yet.</div>
     </div>
+
   </div>
 
   <div class="modal-overlay" id="modal">
@@ -375,12 +331,100 @@
   </div>
 
   <script>
+    // ── State ──────────────────────────────────────────────────────────────────
+    let allRecords = [];
+    let activeCategory = 'all';
+    window._pollInterval = null;
+
+    // ── Category nav ───────────────────────────────────────────────────────────
+    function buildCategoryNav(records) {
+      const counts = { all: records.length };
+      for (const r of records) {
+        const cat = r.category || 'uncategorised';
+        counts[cat] = (counts[cat] || 0) + 1;
+      }
+
+      const order = ['all', ...Object.keys(counts).filter(k => k !== 'all').sort()];
+
+      // Desktop sidebar
+      const catList = document.getElementById('cat-list');
+      catList.innerHTML = order.map(cat => `
+        <li class="cat-item${activeCategory === cat ? ' active' : ''}"
+            onclick="selectCategory('${escAttr(cat)}')">
+          <span>${cat === 'all' ? 'All' : cap(cat)}</span>
+          <span class="cat-count">${counts[cat]}</span>
+        </li>`).join('');
+
+      // Mobile pills
+      const mobileCats = document.getElementById('mobile-cats');
+      mobileCats.innerHTML = order.map(cat => `
+        <button class="cat-pill${activeCategory === cat ? ' active' : ''}"
+                onclick="selectCategory('${escAttr(cat)}')">
+          ${cat === 'all' ? 'All' : cap(cat)} <span style="opacity:0.6;font-size:0.7rem">${counts[cat]}</span>
+        </button>`).join('');
+
+      const hasCats = order.length > 1;
+      document.getElementById('sidebar').style.display = hasCats ? '' : 'none';
+      document.getElementById('mobile-cats').style.display = hasCats ? 'flex' : 'none';
+    }
+
+    function selectCategory(cat) {
+      activeCategory = cat;
+      renderFiltered();
+      buildCategoryNav(allRecords);
+    }
+
+    function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+    // ── Render ─────────────────────────────────────────────────────────────────
+    function renderFiltered() {
+      const filtered = activeCategory === 'all'
+        ? allRecords
+        : allRecords.filter(r => (r.category || 'uncategorised') === activeCategory);
+
+      const container = document.getElementById('history');
+      const header = document.getElementById('content-header');
+      const empty = document.getElementById('empty-state');
+
+      header.style.display = allRecords.length ? '' : 'none';
+      document.getElementById('content-title').textContent =
+        activeCategory === 'all' ? 'All videos' : cap(activeCategory);
+      document.getElementById('content-count').textContent =
+        filtered.length + ' video' + (filtered.length !== 1 ? 's' : '');
+
+      if (!filtered.length) {
+        container.innerHTML = '';
+        empty.style.display = '';
+      } else {
+        empty.style.display = 'none';
+        container.innerHTML = filtered.map(renderCard).join('');
+      }
+    }
+
+    // ── Data loading ───────────────────────────────────────────────────────────
+    async function loadHistory() {
+      try {
+        const res = await fetch('/transcriptions');
+        const records = await res.json();
+        if (!Array.isArray(records)) return;
+        allRecords = records;
+        buildCategoryNav(records);
+        renderFiltered();
+      } catch {}
+    }
+
+    function prependResult(entry) {
+      allRecords = [entry, ...allRecords.filter(r => r.id !== entry.id)];
+      buildCategoryNav(allRecords);
+      renderFiltered();
+    }
+
+    // ── Submit ─────────────────────────────────────────────────────────────────
     async function processVideo() {
       const urlInput = document.getElementById('url');
       const btn = document.getElementById('submit-btn');
       const status = document.getElementById('status');
       const url = urlInput.value.trim();
-
       if (!url) return;
 
       btn.disabled = true;
@@ -394,7 +438,6 @@
           body: JSON.stringify({ url }),
         });
         const data = await res.json();
-
         if (!res.ok) {
           status.textContent = '❌ ' + (data.error || 'Something went wrong');
           status.className = 'status error';
@@ -404,7 +447,6 @@
         const jobId = data.id;
         status.setAttribute('data-job-id', jobId);
         status.innerHTML = '<span class="spinner"></span> Job queued — waiting for result…';
-
         let pollRetries = 0;
 
         window._pollInterval = setInterval(async () => {
@@ -412,8 +454,7 @@
           const pollRes = await fetch('/api/status/' + jobId);
           const job = await pollRes.json();
           if (!pollRes.ok) {
-            pollRetries++;
-            if (pollRetries < 10) return;
+            if (++pollRetries < 10) return;
             status.textContent = '❌ ' + (job.error || 'Failed to check status');
             status.className = 'status error';
             clearInterval(window._pollInterval);
@@ -463,86 +504,12 @@
       }
     }
 
-    function prependResult(entry) {
-      const section = document.getElementById('history-section');
-      section.style.display = 'block';
-      const container = document.getElementById('history');
-      container.insertAdjacentHTML('afterbegin', renderCard(entry));
-    }
-
-    function escAttr(s) {
-      return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    function renderCollapsible(id, label, bodyHtml, bodyClass = '') {
-      const uid = `cl-${id}-${label.replace(/\s+/g, '')}`;
-      return `
-        <div class="collapsible">
-          <button class="collapsible-toggle" onclick="toggleCollapsible('${uid}')">
-            <span class="arrow">▶</span> ${escHtml(label)}
-          </button>
-          <div class="collapsible-body ${bodyClass}" id="${uid}">${bodyHtml}</div>
-        </div>`;
-    }
-
-    function renderAiSection(entry) {
-      if (!entry.summary && !entry.category && !entry.tone) return '';
-      const id = entry.id;
-      let html = '<div class="ai-section"><div class="ai-header">✨ AI Analysis</div>';
-
-      if (entry.category || entry.tone) {
-        html += '<div class="ai-badges">';
-        if (entry.category) html += `<span class="ai-badge badge-category">${escHtml(entry.category)}</span>`;
-        if (entry.tone) html += `<span class="ai-badge badge-tone">${escHtml(entry.tone)}</span>`;
-        html += '</div>';
-      }
-
-      if (entry.tags?.length) {
-        html += `<div class="ai-tags">${entry.tags.map(t => `#${escHtml(t)}`).join(' ')}</div>`;
-      }
-
-      if (entry.summary) {
-        html += `<div class="ai-summary">${escHtml(entry.summary)}</div>`;
-      }
-
-      if (entry.key_takeaways?.length) {
-        const items = entry.key_takeaways.map(t => `<li>${escHtml(t)}</li>`).join('');
-        html += renderCollapsible(id, 'Key Takeaways', `<ul>${items}</ul>`);
-      }
-
-      if (entry.tips_and_tricks?.length) {
-        const items = entry.tips_and_tricks.map(t => `<li>${escHtml(t)}</li>`).join('');
-        html += renderCollapsible(id, 'Tips & Tricks', `<ul>${items}</ul>`, 'tips-body');
-      }
-
-      if (entry.chapters?.length) {
-        const items = entry.chapters.map(c => `
-          <div class="chapter-item">
-            <div class="chapter-meta">${escHtml(c.start_time || '')}</div>
-            <div class="chapter-title">${escHtml(c.title)}</div>
-            ${c.summary ? `<div class="chapter-summary">${escHtml(c.summary)}</div>` : ''}
-          </div>`).join('');
-        html += renderCollapsible(id, 'Chapters', items);
-      }
-
-      if (entry.quotes?.length) {
-        const items = entry.quotes.map(q => `<blockquote>${escHtml(q)}</blockquote>`).join('');
-        html += renderCollapsible(id, 'Quotes', items);
-      }
-
-      if (entry.action_items?.length) {
-        const items = entry.action_items.map(t => `<li>${escHtml(t)}</li>`).join('');
-        html += renderCollapsible(id, 'Action Items', `<ul>${items}</ul>`, 'action-body');
-      }
-
-      html += '</div>';
-      return html;
-    }
-
+    // ── Card rendering ─────────────────────────────────────────────────────────
     function renderCard(entry) {
       const date = new Date(entry.created_at).toLocaleString();
       const error = entry.error ? `<div class="error">${escHtml(entry.error)}</div>` : '';
-      const statusLabel = entry.status !== 'done' ? `<div class="status-badge ${entry.status}">${entry.status}</div>` : '';
+      const statusLabel = entry.status !== 'done'
+        ? `<div class="status-badge ${entry.status}">${entry.status}</div>` : '';
       let transcriptHtml = '';
       let toggleBtnHtml = '';
       if (entry.transcript) {
@@ -567,101 +534,108 @@
         </div>`;
     }
 
-    function escHtml(str) {
-      return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    function renderAiSection(entry) {
+      if (!entry.summary && !entry.category && !entry.tone) return '';
+      const id = entry.id;
+      let html = '<div class="ai-section"><div class="ai-header">✨ AI Analysis</div>';
+      if (entry.category || entry.tone) {
+        html += '<div class="ai-badges">';
+        if (entry.category) html += `<span class="ai-badge badge-category">${escHtml(entry.category)}</span>`;
+        if (entry.tone) html += `<span class="ai-badge badge-tone">${escHtml(entry.tone)}</span>`;
+        html += '</div>';
+      }
+      if (entry.tags?.length) html += `<div class="ai-tags">${entry.tags.map(t => `#${escHtml(t)}`).join(' ')}</div>`;
+      if (entry.summary) html += `<div class="ai-summary">${escHtml(entry.summary)}</div>`;
+      if (entry.key_takeaways?.length) {
+        html += renderCollapsible(id, 'Key Takeaways', `<ul>${entry.key_takeaways.map(t=>`<li>${escHtml(t)}</li>`).join('')}</ul>`);
+      }
+      if (entry.tips_and_tricks?.length) {
+        html += renderCollapsible(id, 'Tips & Tricks', `<ul>${entry.tips_and_tricks.map(t=>`<li>${escHtml(t)}</li>`).join('')}</ul>`, 'tips-body');
+      }
+      if (entry.chapters?.length) {
+        const items = entry.chapters.map(c => `
+          <div class="chapter-item">
+            <div class="chapter-meta">${escHtml(c.start_time||'')}</div>
+            <div class="chapter-title">${escHtml(c.title)}</div>
+            ${c.summary?`<div class="chapter-summary">${escHtml(c.summary)}</div>`:''}
+          </div>`).join('');
+        html += renderCollapsible(id, 'Chapters', items);
+      }
+      if (entry.quotes?.length) {
+        html += renderCollapsible(id, 'Quotes', entry.quotes.map(q=>`<blockquote>${escHtml(q)}</blockquote>`).join(''));
+      }
+      if (entry.action_items?.length) {
+        html += renderCollapsible(id, 'Action Items', `<ul>${entry.action_items.map(t=>`<li>${escHtml(t)}</li>`).join('')}</ul>`, 'action-body');
+      }
+      html += '</div>';
+      return html;
     }
 
-    async function loadHistory() {
-      try {
-        const res = await fetch('/transcriptions');
-        const records = await res.json();
-        if (!records.length) return;
-        const section = document.getElementById('history-section');
-        section.style.display = 'block';
-        document.getElementById('history').innerHTML = records.map(renderCard).join('');
-      } catch {}
+    function renderCollapsible(id, label, bodyHtml, bodyClass = '') {
+      const uid = `cl-${id}-${label.replace(/\s+/g,'')}`;
+      return `
+        <div class="collapsible">
+          <button class="collapsible-toggle" onclick="toggleCollapsible('${uid}')">
+            <span class="arrow">▶</span> ${escHtml(label)}
+          </button>
+          <div class="collapsible-body ${bodyClass}" id="${uid}">${bodyHtml}</div>
+        </div>`;
     }
 
-    // Poll interval reference for cancel
-    window._pollInterval = null;
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    function escHtml(str) { return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function escAttr(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-    // Global cancel handler — reads job ID from the status element
-    window.cancelJob = function () {
+    window.cancelJob = function() {
       const status = document.getElementById('status');
       const jobId = status.getAttribute('data-job-id');
       if (!jobId) return;
       status.removeAttribute('data-job-id');
-      if (window._pollInterval) {
-        clearInterval(window._pollInterval);
-        window._pollInterval = null;
-      }
+      if (window._pollInterval) { clearInterval(window._pollInterval); window._pollInterval = null; }
       status.innerHTML = '<span class="spinner"></span> Cancelling…';
       fetch('/api/cancel/' + jobId, { method: 'POST' }).catch(() => {});
     };
 
-    // Modal confirm — returns a Promise<boolean>
-    window.confirmModal = function (msg) {
-      return new Promise((resolve) => {
+    window.confirmModal = function(msg) {
+      return new Promise(resolve => {
         const overlay = document.getElementById('modal');
         document.getElementById('modal-message').textContent = msg;
         overlay.classList.add('active');
         const cleanup = () => overlay.classList.remove('active');
         document.getElementById('modal-cancel').onclick = () => { cleanup(); resolve(false); };
         document.getElementById('modal-confirm').onclick = () => { cleanup(); resolve(true); };
-        overlay.onclick = (e) => { if (e.target === overlay) { cleanup(); resolve(false); } };
+        overlay.onclick = e => { if (e.target === overlay) { cleanup(); resolve(false); } };
       });
     };
 
-    // Global delete handler — confirms, then removes the card
-    window.deleteEntry = async function (id) {
-      const ok = await window.confirmModal('Delete this transcription?');
-      if (!ok) return;
+    window.deleteEntry = async function(id) {
+      if (!await window.confirmModal('Delete this transcription?')) return;
       const res = await fetch('/api/delete/' + id, { method: 'DELETE' });
       if (!res.ok) return alert('Failed to delete');
-      const card = document.getElementById('card-' + id);
-      if (card) {
-        card.style.transition = 'opacity 0.3s';
-        card.style.opacity = '0';
-        setTimeout(() => {
-          card.remove();
-          if (!document.querySelector('.result-card')) {
-            document.getElementById('history-section').style.display = 'none';
-          }
-        }, 300);
-      }
+      allRecords = allRecords.filter(r => r.id !== id);
+      buildCategoryNav(allRecords);
+      renderFiltered();
     };
 
-    // Global toggle handler — expands/collapses long transcripts
-    window.toggleText = function (id) {
+    window.toggleText = function(id) {
       const el = document.getElementById('text-' + id);
       const btn = document.getElementById('toggle-' + id);
       if (!el || !btn) return;
       const full = el.getAttribute('data-full');
       const short = el.getAttribute('data-short');
       if (el.__collapsed === undefined) el.__collapsed = true;
-      if (el.__collapsed) {
-        el.innerHTML = escHtml(full);
-        btn.textContent = 'show less';
-        el.__collapsed = false;
-      } else {
-        el.innerHTML = escHtml(short);
-        btn.textContent = 'show more';
-        el.__collapsed = true;
-      }
+      if (el.__collapsed) { el.innerHTML = escHtml(full); btn.textContent = 'show less'; el.__collapsed = false; }
+      else { el.innerHTML = escHtml(short); btn.textContent = 'show more'; el.__collapsed = true; }
     };
 
-    window.toggleCollapsible = function (uid) {
+    window.toggleCollapsible = function(uid) {
       const body = document.getElementById(uid);
       if (!body) return;
-      const toggle = body.previousElementSibling;
       body.classList.toggle('open');
-      if (toggle) toggle.classList.toggle('open');
+      body.previousElementSibling?.classList.toggle('open');
     };
 
-    // Allow Enter key to submit
-    document.getElementById('url').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') processVideo();
-    });
+    document.getElementById('url').addEventListener('keydown', e => { if (e.key === 'Enter') processVideo(); });
 
     loadHistory();
   </script>
