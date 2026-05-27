@@ -8,6 +8,7 @@ const { config, logger } = require('./config');
 const { downloadVideo, extractAudio, getAudioDuration } = require('./lib/video');
 const { transcribeAudio } = require('./lib/whisper');
 const { analyseTranscript } = require('./lib/gemini');
+const { scoreVideo } = require('./lib/viral-scorer');
 const { sendTelegramMessage } = require('./lib/telegram');
 
 class CancelledError extends Error {
@@ -46,7 +47,7 @@ async function runPipeline(videoId) {
 
   const { data: job, error: fetchError } = await supabase
     .from(config.SUPABASE_TABLE)
-    .select('url, chat_id')
+    .select('url, chat_id, platform')
     .eq('id', videoId)
     .single();
 
@@ -111,6 +112,14 @@ async function runPipeline(videoId) {
           analysed_at: new Date().toISOString(),
         });
     }
+
+    await scoreVideo({
+      videoId,
+      transcript: text,
+      platform: job.platform || 'unknown',
+      niche: analysis?.category || null,
+      supabase,
+    });
 
     logger.info({ videoId }, 'processing complete');
 

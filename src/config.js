@@ -21,6 +21,7 @@ const config = {
   MAX_CONCURRENT_JOBS: Number(process.env.MAX_CONCURRENT_JOBS) || 2,
   WHISPER_THREADS: Number(process.env.WHISPER_THREADS) || 4,
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || null,
+  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || null,
 };
 
 if (!config.SUPABASE_URL || !config.SUPABASE_ANON_KEY) {
