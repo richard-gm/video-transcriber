@@ -214,6 +214,12 @@
       cursor: pointer; padding: 0; margin-left: 1rem; text-decoration: underline; transition: color 0.2s;
     }
     .delete-btn:hover { color: #f87171; }
+    .copy-btn {
+      background: none; border: none; color: #666; font-size: 0.7rem;
+      cursor: pointer; padding: 0; margin-left: 1rem; text-decoration: underline; transition: color 0.2s;
+    }
+    .copy-btn:hover { color: #aaa; }
+    .copy-btn.copied { color: #4ade80; }
 
     /* ── AI section ── */
     .ai-section { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #222; }
@@ -512,6 +518,9 @@
         ? `<div class="status-badge ${entry.status}">${entry.status}</div>` : '';
       let transcriptHtml = '';
       let toggleBtnHtml = '';
+      const copyBtnHtml = entry.transcript
+        ? `<button class="copy-btn" id="copy-${escHtml(entry.id)}" onclick="copyTranscript('${escHtml(entry.id)}')">copy</button>`
+        : '';
       if (entry.transcript) {
         const words = entry.transcript.split(/\s+/);
         if (words.length > 100) {
@@ -524,13 +533,13 @@
         }
       }
       return `
-        <div class="result-card" id="card-${escHtml(entry.id)}">
+        <div class="result-card" id="card-${escHtml(entry.id)}" data-transcript="${escAttr(entry.transcript || '')}">
           <div class="result-url">${escHtml(entry.url)}</div>
           ${statusLabel}
           ${transcriptHtml}
           ${error}
           ${renderAiSection(entry)}
-          <div class="result-date">${date} ${toggleBtnHtml}<button class="delete-btn" onclick="deleteEntry('${escHtml(entry.id)}')">delete</button></div>
+          <div class="result-date">${date} ${toggleBtnHtml}${copyBtnHtml}<button class="delete-btn" onclick="deleteEntry('${escHtml(entry.id)}')">delete</button></div>
         </div>`;
     }
 
@@ -615,6 +624,21 @@
       allRecords = allRecords.filter(r => r.id !== id);
       buildCategoryNav(allRecords);
       renderFiltered();
+    };
+
+    window.copyTranscript = function(id) {
+      const card = document.getElementById('card-' + id);
+      const btn = document.getElementById('copy-' + id);
+      if (!card || !btn) return;
+      const text = card.getAttribute('data-transcript');
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'copied!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1500);
+      }).catch(() => {
+        btn.textContent = 'failed';
+        setTimeout(() => { btn.textContent = 'copy'; }, 1500);
+      });
     };
 
     window.toggleText = function(id) {
