@@ -17,6 +17,7 @@ const cancelRoutes = require('./routes/cancel');
 const deleteRoutes = require('./routes/delete');
 
 const app = express();
+app.set('trust proxy', 1); // Cloud Run sits behind Google's load balancer
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 

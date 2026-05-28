@@ -35,9 +35,13 @@ router.post('/process', apiLimiter, async (req, res) => {
   logger.info({ id: data.id, url }, 'submitted for transcription');
 
   if (config.TASK_QUEUE_PATH) {
-    enqueueTask(data.id).catch((err) =>
-      logger.error({ err: err.message, videoId: data.id }, 'enqueue failed'),
-    );
+    enqueueTask(data.id).catch(async (err) => {
+      logger.error({ err: err.message, videoId: data.id }, 'enqueue failed');
+      await supabase
+        .from(config.SUPABASE_TABLE)
+        .update({ status: 'error', error: 'Failed to queue job: ' + err.message })
+        .eq('id', data.id);
+    });
   } else {
     localQueue.add(() => runPipeline(data.id));
   }
