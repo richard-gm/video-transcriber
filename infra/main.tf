@@ -46,6 +46,7 @@ resource "google_project_iam_member" "cloudrun_artifact_reader" {
 }
 
 # ── Cloud Tasks queue ─────────────────────────────────────────────────────────
+# Requires Cloud Tasks API enabled: console.cloud.google.com/apis/library/cloudtasks.googleapis.com
 resource "google_cloud_tasks_queue" "transcription" {
   name     = "transcription-queue"
   location = var.region
