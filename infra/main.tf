@@ -16,7 +16,7 @@ provider "google" {
   region  = var.region
 }
 
-# Artifact Registry — stores Docker images. If builds fail, check this exists.
+# ── Artifact Registry ─────────────────────────────────────────────────────────
 resource "google_artifact_registry_repository" "repo" {
   repository_id = "video-transcriber"
   location      = var.region
@@ -32,13 +32,14 @@ resource "google_artifact_registry_repository" "repo" {
   }
 }
 
-# Service account — used by Cloud Run to pull images from Artifact Registry.
+# ── Service account ───────────────────────────────────────────────────────────
+# Used by both the Cloud Run service and the Cloud Run Job.
 resource "google_service_account" "cloudrun" {
   account_id   = "video-transcriber"
   display_name = "Video Transcriber Cloud Run"
 }
 
-# Grants the Cloud Run SA permission to pull Docker images from Artifact Registry.
+# Pull Docker images from Artifact Registry
 resource "google_project_iam_member" "cloudrun_artifact_reader" {
   project = var.project_id
   role    = "roles/artifactregistry.reader"
@@ -46,7 +47,7 @@ resource "google_project_iam_member" "cloudrun_artifact_reader" {
 }
 
 # ── Cloud Tasks queue ─────────────────────────────────────────────────────────
-# Requires Cloud Tasks API enabled: console.cloud.google.com/apis/library/cloudtasks.googleapis.com
+# Requires Cloud Tasks API: console.cloud.google.com/apis/library/cloudtasks.googleapis.com
 resource "google_cloud_tasks_queue" "transcription" {
   name     = "transcription-queue"
   location = var.region
@@ -63,78 +64,29 @@ resource "google_cloud_tasks_queue" "transcription" {
   }
 }
 
-# ── Cloud Run Job (long-running worker) ───────────────────────────────────────
-resource "google_cloud_run_v2_job" "worker" {
-  name     = "video-transcriber-worker"
+# Allow the service account to enqueue tasks — scoped to this queue only
+resource "google_cloud_tasks_queue_iam_member" "enqueuer" {
+  name     = google_cloud_tasks_queue.transcription.name
   location = var.region
-
-  template {
-    task_count = 1
-
-    template {
-      timeout = "36000s"
-
-      containers {
-        image = "${var.region}-docker.pkg.dev/${var.project_id}/video-transcriber/app:latest"
-        command = ["node"]
-        args    = ["worker.js"]
-
-        resources {
-          limits = {
-            cpu    = var.worker_cpu
-            memory = var.worker_memory
-          }
-        }
-
-        env {
-          name  = "SUPABASE_URL"
-          value = var.supabase_url
-        }
-        env {
-          name  = "SUPABASE_ANON_KEY"
-          value = var.supabase_anon_key
-        }
-        env {
-          name  = "SUPABASE_TABLE"
-          value = var.supabase_table
-        }
-        env {
-          name  = "WHISPER_MODEL"
-          value = var.whisper_model
-        }
-        env {
-          name  = "TELEGRAM_BOT_TOKEN"
-          value = var.telegram_bot_token
-        }
-        env {
-          name  = "LOG_LEVEL"
-          value = "info"
-        }
-      }
-
-      service_account = google_service_account.cloudrun.email
-    }
-  }
-
-  depends_on = [google_artifact_registry_repository.repo]
+  project  = var.project_id
+  role     = "roles/cloudtasks.enqueuer"
+  member   = "serviceAccount:${google_service_account.cloudrun.email}"
 }
 
-# Allow the Cloud Run service account to create job executions
-resource "google_project_iam_member" "cloudrun_run_admin" {
-  project = var.project_id
-  role    = "roles/run.developer"
-  member  = "serviceAccount:${google_service_account.cloudrun.email}"
+# ── Cloud Run Job IAM ─────────────────────────────────────────────────────────
+# The Cloud Run Job itself is created and updated by deploy.yml (GitHub Actions),
+# not by Terraform — managing it here caused 409 conflicts. Terraform only owns
+# the IAM binding that lets the service account trigger it.
+resource "google_cloud_run_v2_job_iam_member" "runner" {
+  project  = var.project_id
+  location = var.region
+  name     = "video-transcriber-worker"
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.cloudrun.email}"
 }
 
-# Allow the Cloud Run service account to enqueue Cloud Tasks
-resource "google_project_iam_member" "cloudrun_task_enqueuer" {
-  project = var.project_id
-  role    = "roles/cloudtasks.enqueuer"
-  member  = "serviceAccount:${google_service_account.cloudrun.email}"
-}
-
-# Allow Cloud Tasks to invoke the task handler on the service
-# (the service itself is deployed by GitHub Actions — the name must match)
+# ── Cloud Run Service IAM ─────────────────────────────────────────────────────
+# Allow Cloud Tasks (using the same SA) to invoke the task handler endpoint.
 resource "google_cloud_run_service_iam_member" "task_handler_invoker" {
   project  = var.project_id
   location = var.region
