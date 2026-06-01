@@ -64,25 +64,19 @@ resource "google_cloud_tasks_queue" "transcription" {
   }
 }
 
-# Allow the service account to enqueue tasks — scoped to this queue only
-resource "google_cloud_tasks_queue_iam_member" "enqueuer" {
-  name     = google_cloud_tasks_queue.transcription.name
-  location = var.region
-  project  = var.project_id
-  role     = "roles/cloudtasks.enqueuer"
-  member   = "serviceAccount:${google_service_account.cloudrun.email}"
+# Allow the service account to enqueue Cloud Tasks
+resource "google_project_iam_member" "cloudrun_task_enqueuer" {
+  project = var.project_id
+  role    = "roles/cloudtasks.enqueuer"
+  member  = "serviceAccount:${google_service_account.cloudrun.email}"
 }
 
-# ── Cloud Run Job IAM ─────────────────────────────────────────────────────────
-# The Cloud Run Job itself is created and updated by deploy.yml (GitHub Actions),
-# not by Terraform — managing it here caused 409 conflicts. Terraform only owns
-# the IAM binding that lets the service account trigger it.
-resource "google_cloud_run_v2_job_iam_member" "runner" {
-  project  = var.project_id
-  location = var.region
-  name     = "video-transcriber-worker"
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:${google_service_account.cloudrun.email}"
+# Allow the service account to execute Cloud Run Jobs
+# Note: the Job itself is managed by deploy.yml, not Terraform
+resource "google_project_iam_member" "cloudrun_run_developer" {
+  project = var.project_id
+  role    = "roles/run.developer"
+  member  = "serviceAccount:${google_service_account.cloudrun.email}"
 }
 
 # ── Cloud Run Service IAM ─────────────────────────────────────────────────────
