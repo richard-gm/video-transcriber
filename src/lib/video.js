@@ -12,6 +12,8 @@ function downloadVideo(url, tmpDir, onProgress) {
       '--format', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
       '--output', path.join(tmpDir, 'video.%(ext)s'),
       '--newline',
+      // Use the iOS client API — bypasses YouTube bot detection on cloud IPs
+      '--extractor-args', 'youtube:player_client=ios',
       url,
     ]);
 

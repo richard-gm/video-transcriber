@@ -12,7 +12,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install CPU-only PyTorch first so openai-whisper doesn't pull CUDA libs
 # (saves ~1.5 GB compared to the default CUDA-enabled PyTorch)
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-RUN pip install --no-cache-dir yt-dlp openai-whisper
+RUN pip install --no-cache-dir openai-whisper
+# yt-dlp updates frequently to keep up with platform anti-bot changes; install
+# separately with --upgrade so it fetches the latest release on every build.
+RUN pip install --no-cache-dir --upgrade yt-dlp
 
 # Pre-download Whisper "base" model so first transcription isn't slow.
 RUN python -c "import whisper; whisper.load_model('small')"
