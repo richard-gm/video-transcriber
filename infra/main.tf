@@ -70,17 +70,16 @@ resource "google_cloud_run_v2_job" "worker" {
 
   template {
     task_count = 1
-    timeout    = "36000s"  # 10 hours — no ceiling like Cloud Run services
 
     template {
+      timeout = "36000s"
+
       containers {
         image = "${var.region}-docker.pkg.dev/${var.project_id}/video-transcriber/app:latest"
         command = ["node"]
         args    = ["worker.js"]
 
         resources {
-          cpu_idle          = false
-          startup_cpu_boost = true
           limits = {
             cpu    = var.worker_cpu
             memory = var.worker_memory
