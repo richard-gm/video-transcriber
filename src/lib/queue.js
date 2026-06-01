@@ -44,7 +44,7 @@ async function createJobExecution(videoId) {
         env: [{ name: 'VIDEO_ID', value: videoId }],
       }],
       taskCount: 1,
-      timeout: '3600s',
+      timeout: { seconds: 3600 },
     },
   });
 
