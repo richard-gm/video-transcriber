@@ -16,8 +16,10 @@ function downloadVideo(url, tmpDir, onProgress) {
     ]);
 
     let lastPct = -1;
+    const stderrChunks = [];
 
     proc.stderr.on('data', (d) => {
+      stderrChunks.push(d.toString());
       const lines = d.toString().split('\n').filter(Boolean);
       for (const line of lines) {
         const pctMatch = line.match(/\[download\]\s+([\d.]+)%/);
@@ -38,7 +40,11 @@ function downloadVideo(url, tmpDir, onProgress) {
     });
 
     proc.on('close', (code) => {
-      if (code !== 0) return reject(new Error(`yt-dlp exited with code ${code}`));
+      if (code !== 0) {
+        const stderr = stderrChunks.join('').trim();
+        logger.error({ url, code, stderr }, 'yt-dlp failed');
+        return reject(new Error(`yt-dlp exited with code ${code}: ${stderr.slice(-500)}`));
+      }
       const downloaded = fs.readdirSync(tmpDir).find((f) => f.startsWith('video.'));
       if (!downloaded) return reject(new Error('Download produced no file'));
       resolve(downloaded);
